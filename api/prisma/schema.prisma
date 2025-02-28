@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  name          String
+  email         String    @unique
+  phone_number  String
+  password      String
+  date_born     DateTime?
+  last_session  DateTime?
+  update_at     DateTime  @updatedAt 
+  created_at    DateTime  @default(now())
+  role          Role      @default(USER)
+
+  @@map("users")
+}
+
+model Movie {
+  id            Int               @id @default(autoincrement())
+  title         String
+  categories    MovieCategory[]   
+  duration      String
+  release_year  Int
+  rating        String
+  video_url     String
+  thumbnail_url String
+  description   String
+  cast          String            @default("")
+  director      String            @default("")
+  tags          String            @default("")
+  created_at    DateTime          @default(now())
+  updated_at    DateTime          @updatedAt
+
+  @@map("movies")
+}
+
+model Category {
+  id          Int             @id @default(autoincrement())
+  name        String
+  description String
+  movies      MovieCategory[]
+
+  @@map("categories")
+}
+
+model MovieCategory {
+  movie       Movie     @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  movieId     Int
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId  Int
+  created_at  DateTime  @default(now())
+
+  @@id([movieId, categoryId])
+  @@map("movie_categories")
+}
+
+enum Role {
+  USER 
+  ADMIN
+}
+
+enum Status {
+  conserved
+  deteriorated
+}
