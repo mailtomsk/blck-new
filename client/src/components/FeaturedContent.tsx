@@ -4,7 +4,7 @@ import { Play, Info, Clock } from 'lucide-react';
 export const FeaturedContent = () => (
   <div className="relative w-full h-[100vh]">
     <img
-      src="https://wordpress.iqonic.design/product/wp/streamit/wp-content/uploads/2025/02/long.webp"
+      src="/src/assets/images/banner.webp"
       alt="Featured Movie"
       className="w-full h-full object-cover object-top"
     />

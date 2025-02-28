@@ -9,5 +9,10 @@ export default defineConfig({
   },
   server : {
     port : 5004
-  }
+  },
+  resolve: {
+    alias: {
+      "@img": "/src/assets/images",
+    },
+  },
 });
