@@ -1,16 +1,22 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Facebook, Twitter, Instagram, Youtube } from 'lucide-react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { Home } from './pages/Home';
-import { TVShows } from './pages/TVShows';
-import { Movies } from './pages/Movies';
-import { NewAndPopular } from './pages/NewAndPopular';
-import { MyList } from './pages/MyList';
 import { Login } from './pages/Login';
 import { Watch } from './pages/Watch';
 import { Cart } from './pages/Cart';
 import { Checkout } from './pages/Checkout';
 import { Navbar } from './components/Navbar';
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+};
 
 const Footer = () => (
   <footer className="bg-[#1a0f0f] text-gray-400 py-8 sm:py-16">
@@ -57,13 +63,10 @@ function App() {
 
   return (
     <div className="min-h-screen bg-black">
+      <ScrollToTop />
       {showMainNav && <Navbar />}
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/tv-shows" element={<TVShows />} />
-        <Route path="/movies" element={<Movies />} />
-        <Route path="/new-and-popular" element={<NewAndPopular />} />
-        <Route path="/my-list" element={<MyList />} />
         <Route path="/watch/:id" element={<Watch />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cart" element={<Cart />} />

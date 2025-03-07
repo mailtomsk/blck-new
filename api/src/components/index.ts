@@ -1,5 +1,11 @@
-export { default as UserRouter } from "./user";
+import MovieRouter from "./movie";
+import CateogryRouter from "./category";
+import UserRouter from "./user";
+import HostRouter from "./hosts";
 
-export { default as MovieRouter } from "./movie";
-
-export { default as CateogryRouter } from "./category";
+export {
+  MovieRouter,
+  CateogryRouter,
+  UserRouter,
+  HostRouter
+};

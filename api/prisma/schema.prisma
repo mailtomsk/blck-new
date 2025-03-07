@@ -23,42 +23,59 @@ model User {
 }
 
 model Movie {
-  id            Int               @id @default(autoincrement())
-  title         String
-  categories    MovieCategory[]   
-  duration      String
-  release_year  Int
-  rating        String
-  video_url     String
-  thumbnail_url String
-  description   String
-  cast          String            @default("")
-  director      String            @default("")
-  tags          String            @default("")
-  created_at    DateTime          @default(now())
-  updated_at    DateTime          @updatedAt
+  id                 Int       @id @default(autoincrement())
+  title              String
+  categoryId         Int      @default(2)
+  category           Category  @relation(fields: [categoryId], references: [id])
+  video_url          String
+  thumbnail_url      String
+  description        String
+  show               String?   @default("")
+  products_reviewed  String?   @default("")
+  key_highlights     String?   @default("")
+  rating             String?   @default("")
+  additional_context String?   @default("")
+  duration           String    @default("")
+  release_year       Int       @default(0)
+  cast               String    @default("")
+  director           String    @default("")
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  movie_hosts        MovieHost[]
 
   @@map("movies")
 }
 
 model Category {
-  id          Int             @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   name        String
   description String
-  movies      MovieCategory[]
+  movies      Movie[]
 
   @@map("categories")
 }
 
-model MovieCategory {
-  movie       Movie     @relation(fields: [movieId], references: [id], onDelete: Cascade)
+model Host {
+  id            Int         @id @default(autoincrement())
+  name          String
+  bio           String?     @default("")
+  profile_image String?     @default("")
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+  movie_hosts   MovieHost[]
+
+  @@map("hosts")
+}
+
+model MovieHost {
   movieId     Int
-  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  categoryId  Int
+  hostId      Int
+  movie       Movie     @relation(fields: [movieId], references: [id], onDelete: Cascade)
+  host        Host      @relation(fields: [hostId], references: [id], onDelete: Cascade)
   created_at  DateTime  @default(now())
 
-  @@id([movieId, categoryId])
-  @@map("movie_categories")
+  @@id([movieId, hostId])
+  @@map("movie_hosts")
 }
 
 enum Role {

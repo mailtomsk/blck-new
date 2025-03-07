@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Play, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Play, ChevronLeft, ChevronRight, Info, Star } from 'lucide-react';
 import { MovieDetails } from './MovieDetails';
 import { Movie } from '../types/movies';
 
@@ -18,6 +18,24 @@ export const ContentRow = ({ title, items, isLoading = false }: ContentRowProps)
   const [clickPosition, setClickPosition] = useState({ x: 0, y: 0 });
   const rowRef = useRef<HTMLDivElement>(null);
 
+  // Close hover card on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      if (hoveredMovie) {
+        setHoveredMovie(null);
+      }
+      if (selectedMovie) {
+        setSelectedMovie(null);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [hoveredMovie, selectedMovie]);
+
   const scrollRow = (direction: 'left' | 'right') => {
     const container = document.getElementById(`scroll-container-${title}`);
     if (container) {
@@ -25,6 +43,10 @@ export const ContentRow = ({ title, items, isLoading = false }: ContentRowProps)
         direction === 'left' ? -container.clientWidth : container.clientWidth;
       container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
       setScrollPosition(container.scrollLeft + scrollAmount);
+      
+      // Close any open popups when scrolling
+      setHoveredMovie(null);
+      setSelectedMovie(null);
     }
   };
 
@@ -37,7 +59,7 @@ export const ContentRow = ({ title, items, isLoading = false }: ContentRowProps)
     // Set position for the hover card
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     setHoverPosition({
-      x: rect.left,
+      x: Math.min(rect.left, window.innerWidth - 400), // Ensure popup doesn't go off-screen
       y: rect.top
     });
     
@@ -66,7 +88,7 @@ export const ContentRow = ({ title, items, isLoading = false }: ContentRowProps)
   const handleMovieClick = (movie: Movie, event: React.MouseEvent) => {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     setClickPosition({
-      x: rect.left,
+      x: Math.min(rect.left, window.innerWidth - 400), // Ensure popup doesn't go off-screen
       y: rect.top
     });
     setSelectedMovie(movie);
@@ -74,14 +96,14 @@ export const ContentRow = ({ title, items, isLoading = false }: ContentRowProps)
 
   if (isLoading) {
     return (
-      <div className="mb-8">
+      <div className="mb-8 animate-pulse">
         <div className="w-full px-4 sm:px-6 lg:px-8 max-w-[2400px] mx-auto">
           <h2 className="text-2xl font-bold text-white mb-4">{title}</h2>
           <div className="flex gap-4 overflow-x-scroll scrollbar-hide pb-4 -mx-4">
             {[1, 2, 3, 4, 5].map((_, index) => (
               <div
                 key={index}
-                className="flex-none w-[300px] h-[375px] bg-zinc-800 animate-pulse rounded-md first:ml-4 last:mr-4"
+                className="flex-none w-[160px] sm:w-[200px] md:w-[250px] lg:w-[300px] h-[200px] sm:h-[250px] md:h-[300px] lg:h-[375px] bg-zinc-800 rounded-md first:ml-4 last:mr-4"
               ></div>
             ))}
           </div>
@@ -95,7 +117,7 @@ export const ContentRow = ({ title, items, isLoading = false }: ContentRowProps)
   }
 
   return (
-    <div className="mb-8" ref={rowRef}>
+    <div className="mb-8 animate-fadeIn" ref={rowRef}>
       <div className="relative group">
         <div className="w-full px-4 sm:px-6 lg:px-8 max-w-[2400px] mx-auto">
           <h2 className="text-2xl font-bold text-white mb-4">{title}</h2>
@@ -106,7 +128,7 @@ export const ContentRow = ({ title, items, isLoading = false }: ContentRowProps)
             {items.map((item) => (
               <div
                 key={item.id}
-                className="flex-none w-[300px] relative first:ml-4 last:mr-4"
+                className="flex-none w-[160px] sm:w-[200px] md:w-[250px] lg:w-[300px] relative first:ml-4 last:mr-4 transition-transform duration-300 ease-in-out hover:z-10"
                 onMouseEnter={(e) => handleMouseEnter(item, e)}
                 onMouseLeave={handleMouseLeave}
               >
@@ -114,38 +136,35 @@ export const ContentRow = ({ title, items, isLoading = false }: ContentRowProps)
                   onClick={(e) => setHoveredMovie(item)}
                   src={item.thumbnail_url}
                   alt={item.title}
-                  className="w-full h-[375px] object-cover rounded-md transition transform hover:scale-105 cursor-pointer"
+                  className="w-full h-[200px] sm:h-[250px] md:h-[300px] lg:h-[375px] object-cover rounded-md transition transform duration-300 ease-in-out hover:scale-105 cursor-pointer"
                 />
-                <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 transition-all rounded-md flex items-center justify-center opacity-0 hover:opacity-100">
-                  <div className="flex flex-col items-center gap-4">
+                <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 transition-all duration-300 rounded-md flex items-center justify-center opacity-0 hover:opacity-100">
+                  <div className="flex flex-col items-center gap-4 transform translate-y-4 transition-transform duration-300 group-hover:translate-y-0">
                     <Play
                       onClick={(e) => {
                         e.stopPropagation();
                         setHoveredMovie(item);
                       }}
-                      className="w-12 h-12 text-white cursor-pointer hover:scale-110 transition"
+                      className="w-8 h-8 sm:w-12 sm:h-12 text-white cursor-pointer hover:scale-110 transition-transform duration-300"
                     />
-                    {/* <div className="flex gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMovieClick(item, e);
-                        }}
-                        className="p-2 bg-white bg-opacity-30 rounded-full hover:bg-opacity-50 transition"
-                      >
-                        <Info className="w-5 h-5 text-white" />
-                      </button>
-                    </div> */}
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black to-transparent">
-                    <h3 className="text-white font-semibold">
+                  <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 bg-gradient-to-t from-black to-transparent">
+                    <h3 className="text-sm sm:text-base text-white font-semibold truncate">
                       {item.title}
                     </h3>
-                    <div className="flex items-center gap-2 text-sm text-gray-300">
-                      <span>98% Match</span>
+                    <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-300">
+                      {item.rating && (
+                        <span className="flex items-center text-green-500">
+                          <Star className="w-3 h-3 mr-1 inline" fill="currentColor" />
+                          {item.rating}
+                        </span>
+                      )}
                       <span className="px-1 border border-gray-500 text-xs">
                         {item.rating}
                       </span>
+                      {item.show && (
+                        <span className="truncate max-w-[100px]">{item.show}</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -155,22 +174,22 @@ export const ContentRow = ({ title, items, isLoading = false }: ContentRowProps)
         </div>
         <button
           onClick={() => scrollRow('left')}
-          className="absolute left-2 sm:left-4 top-1/2 -translate-y-8 bg-black bg-opacity-50 p-2 rounded-full text-white opacity-0 hover:opacity-100 transition-opacity hover:bg-opacity-75 disabled:opacity-0 z-10"
+          className="absolute left-2 sm:left-4 top-1/2 -translate-y-8 bg-black bg-opacity-50 p-2 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-opacity-75 disabled:opacity-0 z-10 transform hover:scale-110"
         >
-          <ChevronLeft className="w-6 h-6" />
+          <ChevronLeft className="w-4 h-4 sm:w-6 sm:h-6" />
         </button>
         <button
           onClick={() => scrollRow('right')}
-          className="absolute right-2 sm:right-4 top-1/2 -translate-y-8 bg-black bg-opacity-50 p-2 rounded-full text-white opacity-0 hover:opacity-100 transition-opacity hover:bg-opacity-75 disabled:opacity-0 z-10"
+          className="absolute right-2 sm:right-4 top-1/2 -translate-y-8 bg-black bg-opacity-50 p-2 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-opacity-75 disabled:opacity-0 z-10 transform hover:scale-110"
         >
-          <ChevronRight className="w-6 h-6" />
+          <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6" />
         </button>
       </div>
       
       {/* Hover card */}
       {hoveredMovie && (
         <div 
-          className="hover-card fixed z-50"
+          className="hover-card fixed z-50 transition-opacity duration-300 ease-in-out animate-fade-in"
           style={{
             left: `${hoverPosition.x}px`,
             top: `${hoverPosition.y - 50}px`,
@@ -190,7 +209,7 @@ export const ContentRow = ({ title, items, isLoading = false }: ContentRowProps)
       {/* Click modal */}
       {selectedMovie && (
         <div 
-          className="fixed z-50"
+          className="fixed z-50 transition-opacity duration-300 ease-in-out animate-fade-in"
           style={{
             left: `${clickPosition.x}px`,
             top: `${clickPosition.y - 50}px`,

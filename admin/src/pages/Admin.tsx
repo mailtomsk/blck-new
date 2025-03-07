@@ -9,9 +9,11 @@ import {
   LogOut,
   FolderOpen,
   CreditCard,
+  UserCircle
 } from 'lucide-react';
 import { Categories } from './features/Categories';
 import { Movies } from './features/Movies';
+import { Hosts } from './features/Hosts';
 import { AdminHeader } from '../components/AdminHeader';
 import { Users as UsersComponent } from './features/Users';
 import { Settings as SettingsComponent } from '../components/Settings';
@@ -21,7 +23,7 @@ export function Admin() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const [activeTab, setActiveTab] = React.useState('dashboard');
-  const [contentTab, setContentTab] = React.useState<'categories' | 'movies'>(
+  const [contentTab, setContentTab] = React.useState<'categories' | 'movies' | 'hosts'>(
     'categories'
   );
 
@@ -103,7 +105,7 @@ export function Admin() {
                   }`}
                 >
                   <FolderOpen className="h-4 w-4" />
-                  Genres
+                  Categories
                 </button>
                 <button
                   onClick={() => setContentTab('movies')}
@@ -115,6 +117,17 @@ export function Admin() {
                 >
                   <Film className="h-4 w-4" />
                   Movies
+                </button>
+                <button
+                  onClick={() => setContentTab('hosts')}
+                  className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition ${
+                    contentTab === 'hosts'
+                      ? 'text-brand-yellow'
+                      : 'text-gray-400 hover:bg-zinc-800'
+                  }`}
+                >
+                  <UserCircle className="h-4 w-4" />
+                  Hosts
                 </button>
               </div>
             )}
@@ -177,7 +190,9 @@ export function Admin() {
               : activeTab === 'content'
               ? contentTab === 'categories'
                 ? 'Categories'
-                : 'Movies'
+                : contentTab === 'movies'
+                ? 'Movies'
+                : 'Hosts'
               : activeTab === 'users'
               ? 'User Management'
               : activeTab === 'payments'
@@ -237,7 +252,13 @@ export function Admin() {
 
         {activeTab === 'content' && (
           <div className="space-y-8">
-            {contentTab === 'categories' ? <Categories /> : <Movies />}
+            {contentTab === 'categories' ? (
+              <Categories />
+            ) : contentTab === 'movies' ? (
+              <Movies />
+            ) : (
+              <Hosts />
+            )}
           </div>
         )}
 

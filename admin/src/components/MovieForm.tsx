@@ -1,12 +1,11 @@
 import React from 'react';
-import { X, Upload, Plus, X as XIcon } from 'lucide-react';
+import { X, Plus } from 'lucide-react';
 import { Movie, MovieFormData } from '../types/movie';
 import { Category } from '../types/category';
+import { Host } from '../types/host';
 import { categoriesApi } from '../services/api/categories';
-
-const RATINGS = ['G', 'PG', 'PG-13', 'R', 'NC-17'];
-const MAX_VIDEO_SIZE = 15 * 1024 * 1024; // 15MB
-const MAX_THUMBNAIL_SIZE = 5 * 1024 * 1024; // 5MB
+import { hostsApi } from '../services/api/hosts';
+import { HostForm } from './HostForm';
 
 interface MovieFormProps {
   movie?: Movie;
@@ -18,45 +17,32 @@ export function MovieForm({ movie, onSubmit, onClose }: MovieFormProps) {
   const [formData, setFormData] = React.useState<MovieFormData>({
     title: movie?.title || '',
     categoryId: movie?.categoryId || 0,
-    duration: movie?.duration || '',
-    release_year: movie?.release_year || new Date().getFullYear(),
-    rating: movie?.rating || 'PG-13',
+    hostIds: movie?.hosts?.map(host => host.id) || [],
+    show: movie?.show || '',
+    products_reviewed: movie?.products_reviewed || '',
+    key_highlights: movie?.key_highlights || '',
+    rating: movie?.rating || '',
+    additional_context: movie?.additional_context || '',
     description: movie?.description || '',
-    cast: movie?.cast || '',
-    director: movie?.director || '',
-    tags: movie?.tags || '',
-    video: null as unknown as File,
+    video_url: movie?.video_url || '',
     thumbnail: null as unknown as File,
-  });
-
-  // Initialize selected categories from movie data
-  const [selectedCategories, setSelectedCategories] = React.useState<number[]>(() => {
-    if (movie) {
-      // If movie has categories array, use it
-      if (movie.categories && Array.isArray(movie.categories)) {
-        return movie.categories.map(cat => typeof cat === 'object' ? cat.id : cat);
-      }
-      // If movie has category object, use its id
-      else if (movie.category) {
-        return [movie.category.id];
-      }
-      // Fallback to categoryId
-      else if (movie.categoryId) {
-        return [movie.categoryId];
-      }
-    }
-    return [];
   });
   
   const [categories, setCategories] = React.useState<Category[]>([]);
+  const [hosts, setHosts] = React.useState<Host[]>([]);
   const [error, setError] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
-  const [videoError, setVideoError] = React.useState('');
   const [thumbnailError, setThumbnailError] = React.useState('');
-  const [uploadProgress, setUploadProgress] = React.useState(0);
+  const [isHostFormOpen, setIsHostFormOpen] = React.useState(false);
 
-  const videoInputRef = React.useRef<HTMLInputElement>(null);
   const thumbnailInputRef = React.useRef<HTMLInputElement>(null);
+  const formRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (formRef.current) {
+      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
 
   React.useEffect(() => {
     const fetchCategories = async () => {
@@ -64,67 +50,78 @@ export function MovieForm({ movie, onSubmit, onClose }: MovieFormProps) {
         const response = await categoriesApi.getCategories();
         if (response.ok && response.data) {
           setCategories(response.data);
+          
+          if (movie) {
+            const categoryId = movie.category?.id || movie.categoryId;
+            if (categoryId) {
+              setFormData(prev => ({ ...prev, categoryId }));
+            }
+          }
         }
       } catch (err) {
         setError('Failed to fetch categories');
       }
     };
 
+    const fetchHosts = async () => {
+      try {
+        const response = await hostsApi.getHosts();
+        if (response.ok && response.data) {
+          setHosts(response.data);
+        }
+      } catch (err) {
+        setError('Failed to fetch hosts');
+      }
+    };
+
     fetchCategories();
-  }, []);
+    fetchHosts();
+  }, [movie]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    // Handle single category selection (for backward compatibility)
-    if (name === 'categoryId') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: parseInt(value),
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: name === 'release_year' ? parseInt(value) : value,
-      }));
-    }
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'categoryId' ? parseInt(value) : value,
+    }));
   };
 
-  const handleCategoryToggle = (categoryId: number) => {
-    setSelectedCategories(prev => {
-      if (prev.includes(categoryId)) {
-        return prev.filter(id => id !== categoryId);
-      } else {
-        return [...prev, categoryId];
-      }
-    });
-  };
-
-  const validateFileSize = (file: File, maxSize: number): boolean => {
-    return file.size <= maxSize;
-  };
-
-  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!validateFileSize(file, MAX_VIDEO_SIZE)) {
-        setVideoError('Video file size must not exceed 15MB');
-        return;
-      }
-      setVideoError('');
-      setFormData(prev => ({ ...prev, video: file }));
-    }
+  const handleHostChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedOptions = Array.from(e.target.selectedOptions).map(option => parseInt(option.value));
+    setFormData(prev => ({
+      ...prev,
+      hostIds: selectedOptions
+    }));
   };
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!validateFileSize(file, MAX_THUMBNAIL_SIZE)) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
         setThumbnailError('Thumbnail file size must not exceed 5MB');
         return;
       }
       setThumbnailError('');
       setFormData(prev => ({ ...prev, thumbnail: file }));
+    }
+  };
+
+  const handleHostSubmit = async (formData: FormData) => {
+    try {
+      const response = await hostsApi.createHost(formData);
+      if (response.ok && response.data?.id) {
+        const newHost = response.data;
+        setHosts([...hosts, newHost]);
+        setFormData(prev => ({
+          ...prev,
+          hostIds: [...prev.hostIds, newHost.id]
+        }));
+      } else {
+        throw new Error(response.message || 'Failed to create host');
+      }
+    } catch (err) {
+      throw err;
     }
   };
 
@@ -136,23 +133,19 @@ export function MovieForm({ movie, onSubmit, onClose }: MovieFormProps) {
     try {
       const form = new FormData();
       
-      // Add all form data except categoryId
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key !== 'categoryId' && value !== null && value !== undefined) {
-          form.append(key, value);
-        }
-      });
+      form.append('title', formData.title);
+      form.append('categoryId', formData.categoryId.toString());
+      form.append('description', formData.description);
+      form.append('show', formData.show);
+      form.append('products_reviewed', formData.products_reviewed);
+      form.append('key_highlights', formData.key_highlights);
+      form.append('rating', formData.rating);
+      form.append('additional_context', formData.additional_context);
+      form.append('video_url', formData.video_url || '');
+      form.append('hostIds', JSON.stringify(formData.hostIds));
       
-      // Add primary category (for backward compatibility)
-      if (selectedCategories.length > 0) {
-        form.append('categoryId', selectedCategories[0].toString());
-      } else if (formData.categoryId) {
-        form.append('categoryId', formData.categoryId.toString());
-      }
-      
-      // Add all selected categories as a JSON string
-      if (selectedCategories.length > 0) {
-        form.append('categories', JSON.stringify(selectedCategories));
+      if (formData.thumbnail) {
+        form.append('thumbnail', formData.thumbnail);
       }
 
       await onSubmit(form);
@@ -165,17 +158,20 @@ export function MovieForm({ movie, onSubmit, onClose }: MovieFormProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-zinc-900 rounded-xl p-6 w-full max-w-2xl relative my-8">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center overflow-y-auto py-10">
+      <div 
+        ref={formRef}
+        className="bg-zinc-900 rounded-xl p-6 w-full max-w-6xl relative my-4 mx-4"
+      >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white"
+          className="absolute top-4 right-4 text-gray-400 hover:text-white z-10"
         >
           <X className="h-5 w-5" />
         </button>
         
         <h2 className="text-xl font-bold text-white mb-6">
-          {movie ? 'Edit Movie' : 'Add New Movie'}
+          {movie ? 'Edit Content' : 'Add New Content'}
         </h2>
 
         {error && (
@@ -184,255 +180,262 @@ export function MovieForm({ movie, onSubmit, onClose }: MovieFormProps) {
           </div>
         )}
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">
-                Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleInputChange}
-                className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
-                required
-              />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column */}
+            <div className="space-y-6">
+              {/* Basic Information Section */}
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-white mb-4">Basic Information</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Title <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Category <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="categoryId"
+                      value={formData.categoryId}
+                      onChange={handleInputChange}
+                      className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
+                      required
+                    >
+                      <option value="">Select a category</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-sm font-medium text-gray-400">
+                        Hosts <span className="text-red-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsHostFormOpen(true)}
+                        className="text-sm text-brand-yellow hover:text-brand-yellow/80 flex items-center gap-1"
+                      >
+                        <Plus className="h-4 w-4" /> Add New Host
+                      </button>
+                    </div>
+                    <select
+                      multiple
+                      name="hostIds"
+                      value={formData.hostIds.map(id => id.toString())}
+                      onChange={handleHostChange}
+                      className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white h-24"
+                      required
+                    >
+                      {hosts.map((host) => (
+                        <option key={host.id} value={host.id}>
+                          {host.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-400 mt-1">Hold Ctrl (or Cmd) to select multiple hosts</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Show <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="show"
+                      value={formData.show}
+                      onChange={handleInputChange}
+                      className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Rating <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="rating"
+                      value={formData.rating}
+                      onChange={handleInputChange}
+                      className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Video URL <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="video_url"
+                      value={formData.video_url}
+                      onChange={handleInputChange}
+                      className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Product Information Section */}
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-white mb-4">Product Information</h3>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">
+                    Products Reviewed <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    name="products_reviewed"
+                    value={formData.products_reviewed}
+                    onChange={handleInputChange}
+                    className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
+                    rows={6}
+                    required
+                  />
+                </div>
+              </div>
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">
-                Duration <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="duration"
-                value={formData.duration}
-                onChange={handleInputChange}
-                placeholder="2h 30m"
-                className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">
-                Director <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="director"
-                value={formData.director}
-                onChange={handleInputChange}
-                placeholder="Christopher Nolan"
-                className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">
-                Cast <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="cast"
-                value={formData.cast}
-                onChange={handleInputChange}
-                placeholder="Leonardo DiCaprio, Tom Hardy"
-                className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">
-                Release Year <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                name="release_year"
-                value={formData.release_year}
-                onChange={handleInputChange}
-                className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">
-                Rating <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="rating"
-                value={formData.rating}
-                onChange={handleInputChange}
-                className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
-                required
-              >
-                {RATINGS.map((rating) => (
-                  <option key={rating} value={rating}>
-                    {rating}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">
-              Categories <span className="text-red-500">*</span>
-            </label>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => handleCategoryToggle(category.id)}
-                  className={`px-3 py-1.5 rounded-lg text-sm ${
-                    selectedCategories.includes(category.id)
-                      ? 'bg-brand-yellow text-black'
-                      : 'bg-zinc-800 text-white hover:bg-zinc-700'
-                  }`}
-                >
-                  {category.name}
-                </button>
-              ))}
-            </div>
-            {selectedCategories.length === 0 && (
-              <p className="mt-1 text-sm text-red-500">Please select at least one category</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">
-              Tags
-            </label>
-            <input
-                type="text"
-                name="tags"
-                value={formData.tags}
-                onChange={handleInputChange}
-                placeholder="popular, action, adventure"
-                className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
-                required
-              />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">
-              Description <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
-              rows={3}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">
-                Video File <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="file"
-                ref={videoInputRef}
-                onChange={handleVideoChange}
-                accept="video/*"
-                className="hidden"
-                required={!movie}
-              />
-              <button
-                type="button"
-                onClick={() => videoInputRef.current?.click()}
-                className="w-full bg-zinc-800 text-white py-2 px-4 rounded-lg hover:bg-zinc-700 transition flex items-center justify-center gap-2"
-              >
-                <Upload className="h-5 w-5" />
-                {formData.video ? formData.video.name : movie?.video_url ? 'Change Video File' : 'Choose Video File'}
-              </button>
-              {videoError && (
-                <p className="mt-1 text-sm text-red-500">{videoError}</p>
-              )}
-              {formData.video && !videoError && (
-                <p className="mt-1 text-sm text-gray-400">
-                  Selected: {formData.video.name} ({(formData.video.size / (1024 * 1024)).toFixed(2)} MB)
-                </p>
-              )}
-              {!formData.video && movie?.video_url && (
-                <p className="mt-1 text-sm text-gray-400">
-                  Current video file will be kept if no new file is selected
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">
-                Thumbnail <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="file"
-                ref={thumbnailInputRef}
-                onChange={handleThumbnailChange}
-                accept="image/*"
-                className="hidden"
-                required={!movie}
-              />
-              <button
-                type="button"
-                onClick={() => thumbnailInputRef.current?.click()}
-                className="w-full bg-zinc-800 text-white py-2 px-4 rounded-lg hover:bg-zinc-700 transition flex items-center justify-center gap-2"
-              >
-                <Upload className="h-5 w-5" />
-                {formData.thumbnail ? formData.thumbnail.name : movie?.thumbnail_url ? 'Change Thumbnail' : 'Choose Thumbnail'}
-              </button>
-              {thumbnailError && (
-                <p className="mt-1 text-sm text-red-500">{thumbnailError}</p>
-              )}
-              {formData.thumbnail && !thumbnailError && (
-                <p className="mt-1 text-sm text-gray-400">
-                  Selected: {formData.thumbnail.name} ({(formData.thumbnail.size / (1024 * 1024)).toFixed(2)} MB)
-                </p>
-              )}
-              {!formData.thumbnail && movie?.thumbnail_url && (
-                <p className="mt-1 text-sm text-gray-400">
-                  Current thumbnail will be kept if no new file is selected
-                </p>
-              )}
+            {/* Right Column */}
+            <div className="space-y-6">
+              {/* Media Files Section */}
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-white mb-4">Media Files</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Thumbnail <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="file"
+                      ref={thumbnailInputRef}
+                      onChange={handleThumbnailChange}
+                      accept="image/*"
+                      required={!movie?.thumbnail_url}
+                      className="w-full bg-zinc-800 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-yellow file:text-black hover:file:bg-brand-yellow/90"
+                    />
+                    {thumbnailError && (
+                      <p className="mt-1 text-sm text-red-500">{thumbnailError}</p>
+                    )}
+                    {formData.thumbnail && !thumbnailError && (
+                      <p className="mt-1 text-sm text-gray-400">
+                        Selected: {formData.thumbnail.name} ({(formData.thumbnail.size / (1024 * 1024)).toFixed(2)} MB)
+                      </p>
+                    )}
+                    {!formData.thumbnail && movie?.thumbnail_url && (
+                      <p className="mt-1 text-sm text-gray-400">
+                        Current thumbnail will be kept if no new file is selected
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Additional Information Section */}
+              <div className="bg-zinc-800/50 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-white mb-4">Additional Information</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Key Highlights
+                    </label>
+                    <textarea
+                      name="key_highlights"
+                      value={formData.key_highlights}
+                      onChange={handleInputChange}
+                      className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
+                      rows={5}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Additional Context
+                    </label>
+                    <textarea
+                      name="additional_context"
+                      value={formData.additional_context}
+                      onChange={handleInputChange}
+                      className="w-full bg-zinc-800 border-transparent rounded-lg focus:border-brand-yellow focus:ring-brand-yellow text-white"
+                      rows={5}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-
-          {uploadProgress > 0 && uploadProgress < 100 && (
-            <div className="w-full bg-zinc-800 rounded-full h-2.5">
-              <div
-                className="bg-brand-yellow h-2.5 rounded-full"
-                style={{ width: `${uploadProgress}%` }}
-              ></div>
-            </div>
-          )}
           
-          <button
-            type="submit"
-            disabled={isLoading || !!videoError || !!thumbnailError || selectedCategories.length === 0}
-            className="w-full bg-brand-yellow text-black py-2 rounded-lg hover:bg-opacity-90 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {movie ? 'Updating Movie...' : 'Creating Movie...'}
-              </span>
-            ) : (
-              movie ? 'Update Movie' : 'Add Movie'
-            )}
-          </button>
+          <div className="flex justify-end pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="bg-zinc-700 text-white py-2 px-6 rounded-lg hover:bg-zinc-600 transition font-semibold mr-3"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading || !!thumbnailError || !formData.categoryId}
+              className="bg-brand-yellow text-black py-2 px-6 rounded-lg hover:bg-opacity-90 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {movie ? 'Updating Content...' : 'Creating Content...'}
+                </span>
+              ) : (
+                movie ? 'Update Content' : 'Add Content'
+              )}
+            </button>
+          </div>
         </form>
       </div>
+
+      {isHostFormOpen && (
+        <HostForm
+          onSubmit={handleHostSubmit}
+          onClose={() => setIsHostFormOpen(false)}
+        />
+      )}
     </div>
   );
 }

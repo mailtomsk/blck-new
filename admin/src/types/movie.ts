@@ -1,22 +1,22 @@
 import { Category } from './category';
+import { Host } from './host';
 
 export interface Movie {
   id: number;
   title: string;
   categoryId: number;
-  duration: string;
-  release_year: number;
-  rating: string;
   video_url?: string;
   thumbnail_url?: string;
   description: string;
   created_at: string;
   updated_at: string;
   category?: Category;
-  categories?: Array<Category | number>; // Can be array of Category objects or IDs
-  cast?: string;
-  director?: string;
-  tags?: string;
+  hosts?: Host[];
+  show?: string;
+  products_reviewed?: string;
+  key_highlights?: string;
+  rating?: string;
+  additional_context?: string;
 }
 
 export interface MovieResponse {
@@ -34,13 +34,13 @@ export interface MoviesResponse {
 export type MovieFormData = {
   title: string;
   categoryId: number;
-  duration: string;
-  release_year: number;
-  rating: string;
-  video: File | null;
+  video_url?: string;
   thumbnail: File | null;
   description: string;
-  cast: string;
-  director: string;
-  tags: string;
+  hostIds: number[];
+  show: string;
+  products_reviewed: string;
+  key_highlights: string;
+  rating: string;
+  additional_context: string;
 };

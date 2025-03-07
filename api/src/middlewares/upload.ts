@@ -24,12 +24,14 @@ const storage = multer.diskStorage({
 const fileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const allowedMimeTypes = {
     'video': ['video/mp4', 'video/mpeg', 'video/quicktime'],
-    'image': ['image/jpeg', 'image/png', 'image/gif']
+    'image': ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/heic', 'image/heif']
   };
 
   if (file.fieldname === 'video' && allowedMimeTypes.video.includes(file.mimetype)) {
     cb(null, true);
   } else if (file.fieldname === 'thumbnail' && allowedMimeTypes.image.includes(file.mimetype)) {
+    cb(null, true);
+  } else if (file.fieldname === 'profile_image' && allowedMimeTypes.image.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new Error('Invalid file type'));

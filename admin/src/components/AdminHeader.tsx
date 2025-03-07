@@ -19,7 +19,7 @@ export function AdminHeader({ title }: AdminHeaderProps) {
     <div className="bg-zinc-900 border-b border-zinc-800 px-8 py-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">{title === 'Categories' ? 'Genres' : title}</h1>
+          <h1 className="text-2xl font-bold text-white">{title}</h1>
           <p className="text-gray-400 text-sm mt-1">
             {new Date().toLocaleDateString('en-US', { 
               weekday: 'long', 

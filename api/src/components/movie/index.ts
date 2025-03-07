@@ -8,7 +8,6 @@ const movieRouter = Router();
 
 // Type assertion for middleware
 const uploadMiddleware = upload.fields([
-    { name: 'video', maxCount: 1 },
     { name: 'thumbnail', maxCount: 1 }
 ]) as unknown as RequestHandler;
 

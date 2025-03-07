@@ -15,7 +15,7 @@ export const Navbar = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4 sm:gap-12">
           <Link to="/" className="text-3xl font-bold text-brand-yellow">
-            <img className="img-fluid logo h-[2.375rem] max-h-[2.375rem]" src="https://watch.blck.com/dashboard/images/logo-full-new.png" loading="lazy" alt="Blck" />
+            <img className="h-6 sm:h-[2.375rem] max-h-[2.375rem]" src="https://watch.blck.com/dashboard/images/logo-full-new.png" loading="lazy" alt="Blck" />
           </Link>
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -36,44 +36,12 @@ export const Navbar = () => {
             >
               Home
             </Link>
-            <Link
-              to="javascript:void(0)"
-              className={`hover:text-white transition ${
-              location.pathname === '/tv-shows' ? 'text-white' : ''
-              }`}
-            >
-              TV Shows
-            </Link>
-            <Link
-              to="javascript:void(0)"
-              className={`hover:text-white transition ${
-                location.pathname === '/movies' ? 'text-white' : ''
-              }`}
-            >
-              Movies
-            </Link>
-            <Link
-              to="javascript:void(0)"
-              className={`hover:text-white transition ${
-                location.pathname === '/new-and-popular' ? 'text-white' : ''
-              }`}
-            >
-              New & Popular
-            </Link>
-            <Link
-              to="javascript:void(0)"
-              className={`hover:text-white transition ${
-                location.pathname === '/my-list' ? 'text-white' : ''
-              }`}
-            >
-              My List
-            </Link>
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-6 text-white">
           <Search className="w-5 h-5 cursor-pointer hover:text-gray-300 transition" />
           <Bell className="w-5 h-5 cursor-pointer hover:text-gray-300 transition" />
-          <Link to="javascript:void(0)" className="relative">
+          <Link to="/cart" className="relative">
             <ShoppingCart className="w-5 h-5 cursor-pointer hover:text-gray-300 transition" />
             {cartItems.length > 0 && (
               <span className="absolute -top-2 -right-2 bg-brand-yellow text-black text-xs rounded-full w-4 h-4 flex items-center justify-center font-semibold">
@@ -85,9 +53,9 @@ export const Navbar = () => {
             <img
               src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80"
               alt="Profile"
-              className="w-8 h-8 rounded"
+              className="w-6 h-6 sm:w-8 sm:h-8 rounded"
             />
-            <ChevronDown className="w-4 h-4 group-hover:rotate-180 transition-transform" />
+            <ChevronDown className="w-4 h-4 group-hover:rotate-180 transition-transform hidden sm:block" />
           </Link>
         </div>
       </div>
@@ -106,46 +74,22 @@ export const Navbar = () => {
               Home
             </Link>
             <Link
-              to="/tv-shows"
+              to="/cart"
               onClick={() => setIsMobileMenuOpen(false)}
               className={`py-3 px-4 hover:bg-gray-800 rounded-lg transition ${
-                location.pathname === '/tv-shows'
-                  ? 'text-white'
-                  : 'text-gray-300'
+                location.pathname === '/cart' ? 'text-white' : 'text-gray-300'
               }`}
             >
-              TV Shows
+              Cart
             </Link>
             <Link
-              to="/movies"
+              to={user ? "/" : "/login"}
               onClick={() => setIsMobileMenuOpen(false)}
               className={`py-3 px-4 hover:bg-gray-800 rounded-lg transition ${
-                location.pathname === '/movies' ? 'text-white' : 'text-gray-300'
+                location.pathname === '/login' ? 'text-white' : 'text-gray-300'
               }`}
             >
-              Movies
-            </Link>
-            <Link
-              to="/new-and-popular"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={`py-3 px-4 hover:bg-gray-800 rounded-lg transition ${
-                location.pathname === '/new-and-popular'
-                  ? 'text-white'
-                  : 'text-gray-300'
-              }`}
-            >
-              New & Popular
-            </Link>
-            <Link
-              to="/my-list"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={`py-3 px-4 hover:bg-gray-800 rounded-lg transition ${
-                location.pathname === '/my-list'
-                  ? 'text-white'
-                  : 'text-gray-300'
-              }`}
-            >
-              My List
+              {user ? 'Profile' : 'Login'}
             </Link>
           </div>
         </div>

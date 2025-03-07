@@ -73,7 +73,7 @@ export function Categories() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">Genres</h2>
+        <h2 className="text-2xl font-bold text-white">Categories</h2>
         <button
           onClick={() => {
             setEditingCategory(undefined);
@@ -82,7 +82,7 @@ export function Categories() {
           className="flex items-center gap-2 bg-brand-yellow text-black px-4 py-2 rounded-lg hover:bg-opacity-90 transition font-semibold"
         >
           <Plus className="h-5 w-5" />
-          Add Genres
+          Add Category
         </button>
       </div>
 

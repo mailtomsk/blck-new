@@ -22,7 +22,9 @@ api.interceptors.request.use(
 
 // Add a response interceptor
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
       // Handle unauthorized access

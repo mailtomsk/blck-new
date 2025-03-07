@@ -14,80 +14,83 @@ export const store = async (req: MovieRequest, res: Response): Promise<Response>
     try {
         const data = req.body;
         
-        // Initialize URLs as empty strings
-        let video_url = '';
+        // Initialize thumbnail URL as empty string
         let thumbnail_url = '';
 
-        // Check if files exist and handle them
-        if (req.files) {
-            if (req.files['video']?.[0]) {
-                video_url = await uploadToS3(req.files['video'][0], 'videos');
-            }
-
-            if (req.files['thumbnail']?.[0]) {
-                thumbnail_url = await uploadToS3(req.files['thumbnail'][0], 'thumbnails');
-            }
-        }
-
-        // Validate required fields
-        if (!data.title || !data.categories || !data.duration || !data.release_year) {
+        // Check if thumbnail file exists and handle it
+        if (req.files && req.files['thumbnail']?.[0]) {
+            thumbnail_url = await uploadToS3(req.files['thumbnail'][0], 'thumbnails');
+        } else {
             return failure({ 
                 res, 
                 status: 400, 
-                message: "Missing required fields: title, categoryIds, duration, release_year are required" 
+                message: "Thumbnail file is required" 
             });
         }
 
-        // Parse category IDs - handle both array and single value
-        let categories: number[] = [];
-        if (Array.isArray(data.categories)) {
-            categories = data.categories.map((id: string) => parseInt(id));
-        } else if (typeof data.categories === 'string') {
-            // If it's a comma-separated string
-            if (data.categories.includes(',')) {
-                categories = JSON.parse(data.categories);
-            } else {
-                categories = [parseInt(data.categories)];
+        // Validate required fields
+        if (!data.title || !data.categoryId || !data.description || !data.video_url) {
+            return failure({ 
+                res, 
+                status: 400, 
+                message: "Missing required fields: title, categoryId, description, video_url are required" 
+            });
+        }
+
+        // Parse hosts if provided
+        let hosts: number[] = [];
+        if (data.hostIds) {
+            try {
+                hosts = JSON.parse(data.hostIds);
+                if (!Array.isArray(hosts)) {
+                    hosts = [];
+                }
+            } catch (e) {
+                console.error("Error parsing hosts:", e);
+                hosts = [];
             }
         }
 
-        // Create movie with categories
+        // Create movie
         const movie = await prisma.movie.create({
             data: {
                 title: data.title,
-                duration: data.duration,
-                release_year: parseInt(data.release_year),
-                rating: data.rating || '',
-                description: data.description || '',
-                cast: data.cast || '',         
-                director: data.director || '', 
-                tags: data.tags || '', 
-                video_url,
+                categoryId: parseInt(data.categoryId),
+                description: data.description,
+                video_url: data.video_url,
                 thumbnail_url,
-                categories: {
-                    create: categories.map(categoryId => ({
-                        category: {
-                            connect: { id: categoryId }
-                        }
+                show: data.show || "",
+                products_reviewed: data.products_reviewed || "",
+                key_highlights: data.key_highlights || "",
+                rating: data.rating || "",
+                additional_context: data.additional_context || "",
+                duration: data.duration || "",
+                release_year: data.release_year ? parseInt(data.release_year) : 0,
+                cast: data.cast || "",
+                director: data.director || "",
+                movie_hosts: {
+                    create: hosts.map(hostId => ({
+                        hostId: parseInt(hostId.toString())
                     }))
                 }
             },
             include: {
-                categories: {
+                category: true,
+                movie_hosts: {
                     include: {
-                        category: true
+                        host: true
                     }
                 }
             }
         });
 
-        // Transform the response to include categories directly
-        const formattedMovie = {
+        // Transform the response to include hosts directly
+        const { movie_hosts, ...transformedMovie } = {
             ...movie,
-            categories: movie.categories.map(mc => mc.category)
+            hosts: movie.movie_hosts.map(mh => mh.host)
         };
 
-        return success({ res, status: 201, data: formattedMovie, message: "Movie created" });
+        return success({ res, status: 201, data: transformedMovie, message: "Movie created" });
     } catch (error) {
         console.error('Error in store movie:', error);
         return failure({ res, message: error });
@@ -103,9 +106,10 @@ export const findOne = async (
         const movie = await prisma.movie.findUnique({
             where: { id },
             include: {
-                categories: {
+                category: true,
+                movie_hosts: {
                     include: {
-                        category: true
+                        host: true
                     }
                 }
             }
@@ -115,13 +119,13 @@ export const findOne = async (
             return success({ res, data: "movie not found" });
         }
 
-        // Transform the response to include categories directly
-        const formattedMovie = {
+        // Transform the response to include hosts directly
+        const { movie_hosts, ...transformedMovie } = {
             ...movie,
-            categories: movie.categories.map(mc => mc.category)
+            hosts: movie.movie_hosts.map(mh => mh.host)
         };
 
-        return success({ res, data: formattedMovie });
+        return success({ res, data: transformedMovie });
     } catch (error) {
         return failure({ res, message: error });
     }
@@ -129,29 +133,44 @@ export const findOne = async (
 
 export const findAll = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const tags = req.query.tags as string;
-        const movies = await prisma.movie.findMany({
-            where: {
-                tags: {
-                    contains: tags
+        const categoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined;
+        const hostId = req.query.hostId ? Number(req.query.hostId) : undefined;
+        
+        // Build where clause based on query parameters
+        const whereClause: any = {};
+        if (categoryId) {
+            whereClause.categoryId = categoryId;
+        }
+        if (hostId) {
+            whereClause.movie_hosts = {
+                some: {
+                    hostId: hostId
                 }
-            },
+            };
+        }
+        
+        const movies = await prisma.movie.findMany({
+            where: whereClause,
             include: {
-                categories: {
+                category: true,
+                movie_hosts: {
                     include: {
-                        category: true
+                        host: true
                     }
                 }
             }
         });
 
-        // Transform the response to include categories directly
-        const formattedMovies = movies.map(movie => ({
-            ...movie,
-            categories: movie.categories.map(mc => mc.category)
-        }));
+        // Transform the response to include hosts directly
+        const transformedMovies = movies.map(movie => {
+            const { movie_hosts, ...transformedMovie } = {
+                ...movie,
+                hosts: movie.movie_hosts.map(mh => mh.host)
+            } as any;
+            return transformedMovie;
+        });
 
-        return success({ res, data: formattedMovies });
+        return success({ res, data: transformedMovies });
     } catch (error) {
         return failure({ res, message: error });
     }
@@ -173,24 +192,33 @@ export const update = async (req: MovieRequest, res: Response): Promise<Response
 
         // Prepare update data
         const updateData: any = {
-            title: data.title || undefined,
+            title: data.title,
+            description: data.description,
+            video_url: data.video_url,
+            categoryId: data.categoryId ? parseInt(data.categoryId) : undefined,
+            show: data.show || undefined,
+            products_reviewed: data.products_reviewed || undefined,
+            key_highlights: data.key_highlights || undefined,
+            rating: data.rating || undefined,
+            additional_context: data.additional_context || undefined,
             duration: data.duration || undefined,
             release_year: data.release_year ? parseInt(data.release_year) : undefined,
-            rating: data.rating || undefined,
-            description: data.description || undefined,
-            cast: data.cast || undefined,         
-            director: data.director || undefined,  
-            tags: data.tags || undefined,
+            cast: data.cast || undefined,
+            director: data.director || undefined
         };
 
-        // Handle file uploads if present
-        if (req.files) {
-            if (req.files['video']?.[0]) {
-                updateData.video_url = await uploadToS3(req.files['video'][0], 'videos');
-            }
-
-            if (req.files['thumbnail']?.[0]) {
-                updateData.thumbnail_url = await uploadToS3(req.files['thumbnail'][0], 'thumbnails');
+        // Handle thumbnail upload if present
+        if (req.files && req.files['thumbnail']?.[0]) {
+            updateData.thumbnail_url = await uploadToS3(req.files['thumbnail'][0], 'thumbnails');
+            
+            // Delete old thumbnail file if exists
+            if (existingMovie.thumbnail_url) {
+                try {
+                    const thumbnailKey = existingMovie.thumbnail_url.split('.com/')[1];
+                    await deleteFromS3(thumbnailKey);
+                } catch (s3Error) {
+                    console.error('Error deleting old thumbnail from S3:', s3Error);
+                }
             }
         }
 
@@ -199,58 +227,63 @@ export const update = async (req: MovieRequest, res: Response): Promise<Response
             updateData[key] === undefined && delete updateData[key]
         );
 
-        // Handle category updates if present
-        let categoryUpdateOperations = {};
-        if (data.categories) {
-            // Parse category IDs - handle both array and single value
-            let categories: number[] = [];
-            if (Array.isArray(data.categories)) {
-                categories = data.categories.map((id: string) => parseInt(id));
-            } else if (typeof data.categories === 'string') {
-                // If it's a comma-separated string
-                if (data.categories.includes(',')) {
-                    categories = JSON.parse(data.categories);
-                } else {
-                    categories = [parseInt(data.categories)];
+        // Parse hosts if provided
+        let hosts: number[] = [];
+        if (data.hostIds) {
+            try {
+                hosts = JSON.parse(data.hostIds);
+                if (!Array.isArray(hosts)) {
+                    hosts = [];
                 }
+            } catch (e) {
+                console.error("Error parsing hosts:", e);
+                hosts = [];
             }
-
-            // First delete all existing category connections
-            categoryUpdateOperations = {
-                categories: {
-                    deleteMany: {},
-                    create: categories.map(categoryId => ({
-                        category: {
-                            connect: { id: categoryId }
-                        }
-                    }))
-                }
-            };
         }
 
-        // Update the movie with all changes
-        const movie = await prisma.movie.update({
-            where: { id },
-            data: {
-                ...updateData,
-                ...categoryUpdateOperations
-            },
-            include: {
-                categories: {
-                    include: {
-                        category: true
+        // Update the movie
+        const movie = await prisma.$transaction(async (prisma) => {
+            // First delete existing host relationships if hosts are provided
+            if (data.hostIds) {
+                await prisma.movieHost.deleteMany({
+                    where: { movieId: id }
+                });
+            }
+            
+            // Update the movie
+            const updatedMovie = await prisma.movie.update({
+                where: { id },
+                data: {
+                    ...updateData,
+                    ...(data.hostIds ? {
+                        movie_hosts: {
+                            create: hosts.map(hostId => ({
+                                hostId: parseInt(hostId.toString())
+                            }))
+                        }
+                    } : {})
+                },
+                include: {
+                    category: true,
+                    movie_hosts: {
+                        include: {
+                            host: true
+                        }
                     }
                 }
-            }
+            });
+            
+            return updatedMovie;
         });
 
-        // Transform the response to include categories directly
-        const formattedMovie = {
+        // Transform the response to include hosts directly
+        const { movie_hosts, ...transformedMovie } = {
             ...movie,
-            categories: movie.categories.map(mc => mc.category)
-        };
+            hosts: movie.movie_hosts.map(mh => mh.host)
+        } as any;
+        delete transformedMovie.movie_hosts;
 
-        return success({ res, data: formattedMovie, message: "Movie updated successfully" });
+        return success({ res, data: transformedMovie, message: "Movie updated successfully" });
     } catch (error) {
         console.error('Error in update movie:', error);
         return failure({ res, message: error });
@@ -261,7 +294,7 @@ export const remove = async (req: Request, res: Response): Promise<Response> => 
     try {
         const id = Number(req.params.id);
 
-        // Find the movie first to get the file URLs
+        // Find the movie first to get the thumbnail URL
         const movie = await prisma.movie.findUnique({
             where: { id }
         });
@@ -271,25 +304,19 @@ export const remove = async (req: Request, res: Response): Promise<Response> => 
         }
 
         // Delete the movie from the database
-        // Note: The MovieCategory records will be automatically deleted due to the onDelete: Cascade setting
         await prisma.movie.delete({
             where: { id }
         });
 
-        // Delete associated files from S3
-        try {
-            if (movie.video_url) {
-                const videoKey = movie.video_url.split('.com/')[1];
-                await deleteFromS3(videoKey);
-            }
-            
-            if (movie.thumbnail_url) {
+        // Delete associated thumbnail from S3 if exists
+        if (movie.thumbnail_url) {
+            try {
                 const thumbnailKey = movie.thumbnail_url.split('.com/')[1];
                 await deleteFromS3(thumbnailKey);
+            } catch (s3Error) {
+                console.error('Error deleting thumbnail from S3:', s3Error);
+                // Continue with the response even if S3 deletion fails
             }
-        } catch (s3Error) {
-            console.error('Error deleting files from S3:', s3Error);
-            // Continue with the response even if S3 deletion fails
         }
 
         return success({ res, message: "Movie deleted successfully" });

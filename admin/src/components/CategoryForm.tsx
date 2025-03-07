@@ -40,7 +40,7 @@ export function CategoryForm({ category, onSubmit, onClose }: CategoryFormProps)
         </button>
 
         <h2 className="text-xl font-bold text-white mb-6">
-          {category ? 'Edit Genres' : 'Add New Genres'}
+          {category ? 'Edit Category' : 'Add New Category'}
         </h2>
 
         {error && (
@@ -90,7 +90,7 @@ export function CategoryForm({ category, onSubmit, onClose }: CategoryFormProps)
                 {category ? 'Updating...' : 'Creating...'}
               </span>
             ) : (
-              category ? 'Update Genres' : 'Add Genres'
+              category ? 'Update Category' : 'Add Category'
             )}
           </button>
         </form>

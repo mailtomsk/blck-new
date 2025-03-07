@@ -9,11 +9,13 @@ import {
   SkipBack, 
   SkipForward, 
   ArrowLeft,
-  MessageSquare
+  MessageSquare,
+  Star
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getMovieById } from '../services/api/movies';
 import { Movie } from '../types/movies';
+import Hls from 'hls.js';
 
 interface MoviePlayerProps {
   movieId: number;
@@ -31,11 +33,112 @@ export const MoviePlayer = ({ movieId }: MoviePlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [hlsInstance, setHlsInstance] = useState<Hls | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchMovie = async () => {
+      setIsLoading(true);
+      try {
+        const response = await getMovieById(movieId);
+        
+        if (response.ok && response.data) {
+          setMovie(response.data);
+          if (response.data.video_url) {
+            initializeHls(response.data.video_url);
+          }
+        } else {
+          setError(response.message || 'Failed to load movie');
+        }
+      } catch (err) {
+        console.error('An error occurred while loading the movie:', err);
+        setError('An error occurred while loading the movie');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMovie();
+
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.src = '';
+      }
+    };
+  }, [movieId]);
+
+  const initializeHls = (videoUrl: string) => {
+    if (!videoRef.current) return;
+
+    const isHlsStream = videoUrl.includes('.m3u8');
+    const formattedUrl = videoUrl.replace(/\/master\.m3u8$/, '/_AQUAPAW.m3u8');
+
+    if (isHlsStream && Hls.isSupported()) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        backBufferLength: 90,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 600,
+        maxBufferSize: 60 * 1000 * 1000,
+        maxBufferHole: 0.5,
+        manifestLoadPolicy: {
+          default: {
+            maxTimeToFirstByteMs: 10000,
+            maxLoadTimeMs: 20000,
+            timeoutRetry: {
+              maxNumRetry: 6,
+              retryDelayMs: 1000,
+              maxRetryDelayMs: 8000
+            },
+            errorRetry: {
+              maxNumRetry: 6,
+              retryDelayMs: 1000,
+              maxRetryDelayMs: 8000
+            }
+          }
+        }
+      });
+
+      hls.loadSource(formattedUrl);
+      hls.attachMedia(videoRef.current);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (videoRef.current) {
+          videoRef.current.play().catch(error => {
+            console.error("Error playing video:", error);
+            setError("Failed to play video. Please try again later.");
+          });
+        }
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hls.recoverMediaError();
+              break;
+            default:
+              hls.destroy();
+              break;
+          }
+        }
+      });
+    } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+      // For Safari which has built-in HLS support
+      videoRef.current.src = formattedUrl;
+    } else {
+      videoRef.current.src = videoUrl;
+    }
+  };
 
   // Format time in MM:SS format
   const formatTime = (time: number): string => {
@@ -54,25 +157,23 @@ export const MoviePlayer = ({ movieId }: MoviePlayerProps) => {
     return `${hours > 0 ? `${hours}:` : ''}${minutes < 10 && hours > 0 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   };
 
-  useEffect(() => {
-    const fetchMovie = async () => {
-      setIsLoading(true);
-      try {
-        const response = await getMovieById(movieId);
-        if (response.ok && response.data) {
-          setMovie(response.data);
-        } else {
-          setError(response.message || 'Failed to load movie');
-        }
-      } catch (err) {
-        setError('An error occurred while loading the movie');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Format products reviewed as a list
+  const formatProductsList = (productsText?: string) => {
+    if (!productsText) return [];
+    return productsText.split('\n').filter(item => item.trim().length > 0);
+  };
 
-    fetchMovie();
-  }, [movieId]);
+  // Format key highlights as a list
+  const formatHighlights = (highlightsText?: string) => {
+    if (!highlightsText) return [];
+    return highlightsText.split('\n').map(item => item.trim()).filter(item => item.length > 0);
+  };
+
+  // Format additional context as a list
+  const formatAdditionalContext = (contextText?: string) => {
+    if (!contextText) return [];
+    return contextText.split('\n').map(item => item.trim()).filter(item => item.length > 0);
+  };
 
   useEffect(() => {
     const video = videoRef.current;
@@ -90,7 +191,6 @@ export const MoviePlayer = ({ movieId }: MoviePlayerProps) => {
     };
 
     const handleLoadedMetadata = () => {
-      console.log("Video metadata loaded, duration:", video.duration);
       if (video.duration && !isNaN(video.duration) && video.duration > 0) {
         setDuration(video.duration);
       }
@@ -181,18 +281,6 @@ export const MoviePlayer = ({ movieId }: MoviePlayerProps) => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
-
-  // Set a default video URL for testing if none is provided
-  useEffect(() => {
-    if (movie && !movie.video_url) {
-      // Use a fallback video URL that's guaranteed to work
-      const fallbackVideo = "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-      setMovie({
-        ...movie,
-        video_url: fallbackVideo
-      });
-    }
-  }, [movie]);
 
   // Add global mouse event listeners for dragging
   useEffect(() => {
@@ -358,6 +446,10 @@ export const MoviePlayer = ({ movieId }: MoviePlayerProps) => {
     );
   }
 
+  const productsList = formatProductsList(movie.products_reviewed);
+  const highlightsList = formatHighlights(movie.key_highlights);
+  const additionalContextList = formatAdditionalContext(movie.additional_context);
+
   return (
     <div 
       ref={playerRef}
@@ -367,7 +459,6 @@ export const MoviePlayer = ({ movieId }: MoviePlayerProps) => {
         {/* Video Element */}
         <video
           ref={videoRef}
-          src={movie.video_url || "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"}
           className="w-full h-full object-contain"
           autoPlay
           playsInline
@@ -389,20 +480,95 @@ export const MoviePlayer = ({ movieId }: MoviePlayerProps) => {
 
         {/* Pause overlay with "You're watching" */}
         {!isPlaying && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-start justify-end p-8 sm:p-16">
-            <div className="max-w-2xl">
-              <p className="text-gray-400 mb-2">You're watching</p>
+          <div className="bg-[#2626268c] absolute inset-0 bg-black bg-opacity-50 flex flex-col items-start justify-start p-8 sm:p-16">
+            <div className="max-w-4xl">
+              {movie.show && (
+                <p className="text-gray-400 mb-2">{movie.show}</p>
+              )}
               <h1 className="text-3xl sm:text-5xl font-bold text-white mb-4">{movie.title}</h1>
+              
               <div className="flex items-center gap-2 text-white mb-4">
+                {movie.rating && (
+                  <span className="flex items-center text-green-500">
+                    <Star className="w-4 h-4 mr-1 inline" fill="currentColor" />
+                    {movie.rating}/5
+                  </span>
+                )}
                 <span>{movie.release_year}</span>
                 <span className="px-2 py-1 text-xs border border-gray-500 rounded">
                   {movie.rating}
                 </span>
+                <span className="px-2 py-1 text-xs bg-gray-800 rounded">HD</span>
                 <span>{movie.duration}</span>
               </div>
-              <p className="text-white text-sm sm:text-lg mb-8 sm:mb-16 max-w-3xl">
+              
+              <p className="text-white text-sm sm:text-lg mb-6 max-w-3xl">
                 {movie.description}
               </p>
+              
+              {/* Hosts information */}
+              {movie.hosts && movie.hosts.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-gray-400 text-sm mb-3">Hosts:</h3>
+                  <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                    {movie.hosts.map(host => (
+                      <div key={host.id} className="flex-none">
+                        <div className="flex flex-col items-center">
+                          <span className="text-white text-sm">{host.name}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Two-column layout for Products and Highlights */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Products reviewed - Left column */}
+                {productsList.length > 0 && (
+                  <div className="bg-zinc-800 rounded-lg p-6">
+                    <h3 className="text-gray-400 text-lg mb-4">Products Reviewed</h3>
+                    <ul className="text-white space-y-2">
+                      {productsList.map((product, index) => (
+                        <li key={index} className="flex gap-2">
+                          <span className="text-gray-400">{index + 1}.</span>
+                          <span>{product.replace(/^\d+\.\s*/, '')}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {/* Key highlights - Right column */}
+                {highlightsList.length > 0 && (
+                  <div className="bg-zinc-800 rounded-lg p-6">
+                    <h3 className="text-gray-400 text-lg mb-4">Key Highlights</h3>
+                    <ul className="text-white space-y-2">
+                      {highlightsList.map((highlight, index) => (
+                        <li key={index} className="flex gap-2">
+                          <span className="text-brand-yellow">•</span>
+                          <span>{highlight.replace(/^-\s*/, '')}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              
+              {/* Additional context - Full width */}
+              {additionalContextList.length > 0 && (
+                <div className="bg-zinc-800 rounded-lg p-6">
+                  <h3 className="text-gray-400 text-lg mb-4">Additional Information</h3>
+                  <ul className="text-white space-y-2">
+                    {additionalContextList.map((context, index) => (
+                      <li key={index} className="flex gap-2">
+                        <span className="text-brand-yellow">•</span>
+                        <span>{context.replace(/^-\s*/, '')}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -479,12 +645,6 @@ export const MoviePlayer = ({ movieId }: MoviePlayerProps) => {
             
             {/* Right controls */}
             <div className="flex items-center gap-2 sm:gap-4">
-              <button
-                className="p-2 text-white hover:bg-white/10 rounded-full transition hidden sm:block"
-              >
-                <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
-              </button>
-              
               <button
                 onClick={toggleFullscreen}
                 className="p-2 text-white hover:bg-white/10 rounded-full transition"

@@ -41,6 +41,9 @@ export const findAll = async (req: Request, res: Response): Promise<Response> =>
         const categories = await prisma.category.findMany({
             include: {
                 movies: true
+            },
+            orderBy: {
+                name: 'asc'
             }
         });
         return success({ res, data: categories });

@@ -3,105 +3,146 @@ import { FeaturedContent } from '../components/FeaturedContent';
 import { ContentRow } from '../components/ContentRow';
 import { GenreFilter } from '../components/GenreFilter';
 import { Movie } from '../types/movies';
-import { 
-  getTrendingMovies, 
-  getContinueWatching, 
-  getPopularMovies, 
-  getNewReleases 
-} from '../services/api/movies';
+import { Category } from '../types/category';
+import { getMoviesByCategory } from '../services/api/movies';
+import { getAllCategories } from '../services/api/categories';
 
 export function Home() {
-  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
-  const [continueWatching, setContinueWatching] = useState<Movie[]>([]);
-  const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
-  const [newReleases, setNewReleases] = useState<Movie[]>([]);
-  
-  const [isLoading, setIsLoading] = useState({
-    trending: true,
-    continueWatching: true,
-    popular: true,
-    newReleases: true
-  });
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
+  // Group movies by category
+  const moviesByCategory = React.useMemo(() => {
+    if (!movies.length) return {};
+    
+    return movies.reduce<Record<number, Movie[]>>((acc, movie) => {
+      if (movie.category && movie.category.id) {
+        if (!acc[movie.category.id]) {
+          acc[movie.category.id] = [];
+        }
+        acc[movie.category.id].push(movie);
+      }
+      return acc;
+    }, {});
+  }, [movies]);
+
+  // Fetch categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await getAllCategories();
+        
+        if (response.ok && response.data) {
+          setCategories(response.data);
+        } else if (Array.isArray(response)) {
+          // Handle case where response is directly an array
+          setCategories(response);
+        } else {
+          setError('Failed to load categories');
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        setError('An error occurred while loading categories');
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // Fetch movies based on selected category
   useEffect(() => {
     const fetchMovies = async () => {
-      // Fetch trending movies
+      setIsLoading(true);
+      setError(null);
+      setIsTransitioning(true);
+      
       try {
-        const trendingResponse = await getTrendingMovies();
-        if (trendingResponse.ok && trendingResponse.data) {
-          setTrendingMovies(trendingResponse.data);
+        const response = await getMoviesByCategory(selectedCategoryId || undefined);
+        
+        if (response.ok && response.data) {
+          setMovies(response.data);
+        } else if (Array.isArray(response)) {
+          // Handle case where response is directly an array
+          setMovies(response);
+        } else {
+          setError(response.message || 'Failed to load movies');
         }
       } catch (error) {
-        console.error('Error fetching trending movies:', error);
+        console.error('Error fetching movies:', error);
+        setError('An error occurred while loading movies');
       } finally {
-        setIsLoading(prev => ({ ...prev, trending: false }));
-      }
-
-      // Fetch continue watching
-      try {
-        const continueResponse = await getContinueWatching();
-        if (continueResponse.ok && continueResponse.data) {
-          setContinueWatching(continueResponse.data);
-        }
-      } catch (error) {
-        console.error('Error fetching continue watching:', error);
-      } finally {
-        setIsLoading(prev => ({ ...prev, continueWatching: false }));
-      }
-
-      // Fetch popular movies
-      try {
-        const popularResponse = await getPopularMovies();
-        if (popularResponse.ok && popularResponse.data) {
-          setPopularMovies(popularResponse.data);
-        }
-      } catch (error) {
-        console.error('Error fetching popular movies:', error);
-      } finally {
-        setIsLoading(prev => ({ ...prev, popular: false }));
-      }
-
-      // Fetch new releases
-      try {
-        const newReleasesResponse = await getNewReleases();
-        if (newReleasesResponse.ok && newReleasesResponse.data) {
-          setNewReleases(newReleasesResponse.data);
-        }
-      } catch (error) {
-        console.error('Error fetching new releases:', error);
-      } finally {
-        setIsLoading(prev => ({ ...prev, newReleases: false }));
+        setIsLoading(false);
+        // Add a small delay before removing the transition state
+        setTimeout(() => {
+          setIsTransitioning(false);
+        }, 300);
       }
     };
 
     fetchMovies();
-  }, []);
+  }, [selectedCategoryId]);
+
+  const handleSelectCategory = (categoryId: number | null) => {
+    setIsTransitioning(true);
+    setSelectedCategoryId(categoryId);
+  };
 
   return (
     <>
       <FeaturedContent />
-      <GenreFilter />
-      <div className="mt-8">
-        <ContentRow 
-          title="New Releases" 
-          items={trendingMovies} 
-          isLoading={isLoading.trending} 
-        />
-        <ContentRow 
-          title="Continue Watching" 
-          items={continueWatching} 
-          isLoading={isLoading.continueWatching} 
-        />
-        <ContentRow 
-          title="Popular on BLCK" 
-          items={popularMovies} 
-          isLoading={isLoading.popular} 
-        />
-        <ContentRow 
-          title="Anime Movies" 
-          items={newReleases} 
-          isLoading={isLoading.newReleases} 
-        />
+      <GenreFilter 
+        categories={categories} 
+        selectedCategoryId={selectedCategoryId} 
+        onSelectCategory={handleSelectCategory} 
+      />
+      <div className={`mt-8 transition-opacity duration-300 ease-in-out ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+        {isLoading ? (
+          <ContentRow 
+            title="Loading..." 
+            items={[]} 
+            isLoading={true} 
+          />
+        ) : error ? (
+          <div className="text-center text-white py-8">
+            <p>{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-brand-yellow text-black rounded-md transition-all duration-300 hover:bg-opacity-90 hover:scale-105"
+            >
+              Retry
+            </button>
+          </div>
+        ) : movies.length === 0 ? (
+          <div className="text-center text-white py-8 animate-fadeIn">
+            <p>No movies found for the selected category</p>
+          </div>
+        ) : selectedCategoryId === null ? (
+          // Show all categories when "All" is selected
+          categories.map(category => {
+            const categoryMovies = moviesByCategory[category.id] || [];
+            if (categoryMovies.length === 0) return null;
+            
+            return (
+              <ContentRow 
+                key={category.id}
+                title={category.name} 
+                items={categoryMovies} 
+                isLoading={false} 
+              />
+            );
+          })
+        ) : (
+          // Show only the selected category
+          <ContentRow 
+            title={categories.find(c => c.id === selectedCategoryId)?.name || 'Movies'} 
+            items={movies} 
+            isLoading={false} 
+          />
+        )}
       </div>
     </>
   );

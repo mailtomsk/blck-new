@@ -14,18 +14,23 @@ export interface User {
 export interface Movie {
   id: number;
   title: string;
-  duration: string;
-  release_year: number;
-  rating: string;
+  categoryId: number;
   video_url: string;
   thumbnail_url: string;
   description: string;
-  cast: string;         
-  director: string;     
-  tags: string;
+  show?: string;
+  products_reviewed?: string;
+  key_highlights?: string;
+  rating?: string;
+  additional_context?: string;
+  duration: string;
+  release_year: number;
+  cast: string;
+  director: string;
   created_at: Date;
   updated_at: Date;
-  categories?: Category[];
+  category?: Category;
+  hosts?: Host[];
 }
 
 export interface Category {
@@ -35,8 +40,19 @@ export interface Category {
   movies?: Movie[];
 }
 
-export interface MovieCategory {
+export interface Host {
+  id: number;
+  name: string;
+  bio?: string;
+  created_at: Date;
+  updated_at: Date;
+  movies?: Movie[];
+}
+
+export interface MovieHost {
   movieId: number;
-  categoryId: number;
+  hostId: number;
+  movie?: Movie;
+  host?: Host;
   created_at: Date;
 }

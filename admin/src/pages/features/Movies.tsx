@@ -5,10 +5,13 @@ import { Movie } from '../../types/movie';
 import { moviesApi } from '../../services/api/movies';
 import { Category } from '../../types/category';
 import { categoriesApi } from '../../services/api/categories';
+import { Host } from '../../types/host';
+import { hostsApi } from '../../services/api/hosts';
 
 export function Movies() {
   const [movies, setMovies] = React.useState<Movie[]>([]);
   const [categories, setCategories] = React.useState<Category[]>([]);
+  const [hosts, setHosts] = React.useState<Host[]>([]);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [editingMovie, setEditingMovie] = React.useState<Movie | undefined>();
   const [error, setError] = React.useState('');
@@ -39,9 +42,21 @@ export function Movies() {
     }
   };
 
+  const fetchHosts = async () => {
+    try {
+      const response = await hostsApi.getHosts();
+      if (response.ok && response.data) {
+        setHosts(response.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch hosts', err);
+    }
+  };
+
   React.useEffect(() => {
     fetchMovies();
     fetchCategories();
+    fetchHosts();
   }, []);
 
   const handleAdd = async (formData: FormData) => {
@@ -89,35 +104,28 @@ export function Movies() {
     }
   };
 
-  // Function to get category names for a movie
-  const getCategoryNames = (movie: Movie) => {
-    if (movie.categories) {
-      // Handle when categories is an array of objects
-      if (Array.isArray(movie.categories) && movie.categories.length > 0 && typeof movie.categories[0] === 'object') {
-        return movie.categories.map(cat => cat.name);
-      }
-      
-      // Handle when categories is an array of IDs
-      if (Array.isArray(movie.categories)) {
-        return movie.categories.map(catId => {
-          const category = categories.find(c => c.id === catId);
-          return category ? category.name : '';
-        }).filter(Boolean);
-      }
-    }
-    
+  // Function to get category name for a movie
+  const getCategoryName = (movie: Movie) => {
     if (movie.category) {
-      return [movie.category.name];
+      return movie.category.name;
     }
     
     const category = categories.find(c => c.id === movie.categoryId);
-    return category ? [category.name] : [];
+    return category ? category.name : 'Unknown';
+  };
+
+  // Function to get host names for a movie
+  const getHostNames = (movie: Movie) => {
+    if (movie.hosts && movie.hosts.length > 0) {
+      return movie.hosts.map(host => host.name).join(', ');
+    }
+    return 'No hosts assigned';
   };
 
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">Movies</h2>
+        <h2 className="text-2xl font-bold text-white">Content</h2>
         <button
           onClick={() => {
             setEditingMovie(undefined);
@@ -126,7 +134,7 @@ export function Movies() {
           className="flex items-center gap-2 bg-brand-yellow text-black px-4 py-2 rounded-lg hover:bg-opacity-90 transition font-semibold"
         >
           <Plus className="h-5 w-5" />
-          Add Movie
+          Add Content
         </button>
       </div>
 
@@ -170,26 +178,46 @@ export function Movies() {
                     </button>
                   </div>
                 </div>
-                <p className="text-gray-400 text-sm mb-2">{movie.description}</p>
+                
                 <div className="flex flex-col gap-1 text-sm text-gray-500 mb-2">
-                  <div className="flex items-center gap-4">
-                    <span>{movie.duration}</span>
-                    <span>{movie.release_year}</span>
-                    <span>{movie.rating}</span>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-gray-400">Show:</span>
+                    <span className="text-white">{movie.show || 'N/A'}</span>
                   </div>
-                  {movie.director && (
-                    <div><span className="text-gray-400">Director:</span> {movie.director}</div>
-                  )}
-                  {movie.cast && (
-                    <div><span className="text-gray-400">Cast:</span> {movie.cast}</div>
-                  )}
+                  
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-gray-400">Hosts:</span>
+                    <span className="text-white">{getHostNames(movie)}</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-gray-400">Rating:</span>
+                    <span className="text-white">{movie.rating || 'N/A'}</span>
+                  </div>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {getCategoryNames(movie).map((categoryName, index) => (
-                    <span key={index} className="inline-block px-2 py-1 bg-zinc-800 text-gray-300 rounded text-xs">
-                      {categoryName}
-                    </span>
-                  ))}
+                
+                {movie.products_reviewed && (
+                  <div className="mb-2">
+                    <h4 className="text-sm font-medium text-gray-400 mb-1">Products Reviewed:</h4>
+                    <div className="text-sm text-white whitespace-pre-line">
+                      {movie.products_reviewed}
+                    </div>
+                  </div>
+                )}
+                
+                {movie.key_highlights && (
+                  <div className="mb-2">
+                    <h4 className="text-sm font-medium text-gray-400 mb-1">Key Highlights:</h4>
+                    <div className="text-sm text-white whitespace-pre-line">
+                      {movie.key_highlights}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="mt-2">
+                  <span className="inline-block px-2 py-1 bg-zinc-800 text-gray-300 rounded text-xs">
+                    {getCategoryName(movie)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -197,7 +225,7 @@ export function Movies() {
 
           {movies.length === 0 && !isLoading && (
             <div className="col-span-full text-center py-12 text-gray-400">
-              No movies found. Click the "Add Movie" button to create one.
+              No content found. Click the "Add Content" button to create one.
             </div>
           )}
         </div>

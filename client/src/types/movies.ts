@@ -1,3 +1,12 @@
+export interface Host {
+  id: number;
+  name: string;
+  bio: string;
+  profile_image: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Movie {
   id: number;
   title: string;
@@ -15,14 +24,15 @@ export interface Movie {
     name: string;
     description: string;
   };
-  categories?: {
-    id: number;
-    name: string;
-    description: string;
-  }[];
   genres?: string[];
   cast?: string;
   director?: string;
+  // New fields
+  show?: string;
+  products_reviewed?: string;
+  key_highlights?: string;
+  additional_context?: string;
+  hosts?: Host[];
 }
 
 export interface MovieResponse {
@@ -49,4 +59,9 @@ export type MovieFormData = {
   genres?: string[];
   cast?: string;
   director?: string;
+  show?: string;
+  products_reviewed?: string;
+  key_highlights?: string;
+  additional_context?: string;
+  hosts?: number[]; // Host IDs
 };

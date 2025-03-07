@@ -30,9 +30,3 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
   logout: () => set({ user: null })
 }));
-
-// Helper function to get the auth token
-export const getAuthToken = (): string | null => {
-  const state = useAuthStore.getState();
-  return state.user?.token || null;
-};
