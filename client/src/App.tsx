@@ -51,7 +51,7 @@ const Footer = () => (
       </div>
       <div className="text-xs sm:text-sm text-center sm:text-left">
         <p className="mb-4">© 2025 BLCK. All rights reserved.</p>
-        <p>BLCK is a streaming service offering a wide variety of award-winning TV shows, movies, anime, documentaries, and more on thousands of internet-connected devices.</p>
+        <p>BLCK is a eCommerce store with live videos.</p>
       </div>
     </div>
   </footer>
