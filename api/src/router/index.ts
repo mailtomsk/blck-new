@@ -5,7 +5,8 @@ const routes: [string, Router][] = [
   ["user", ROUTES.UserRouter],
   ["movie", ROUTES.MovieRouter],
   ["category", ROUTES.CateogryRouter],
-  ["host", ROUTES.HostRouter]
+  ["host", ROUTES.HostRouter],
+  ["order", ROUTES.OrderRouter]
 ];
 
 const router = (app: Application): void => {

@@ -1,18 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface UserDetailsProps {
   setUserDetailsValid: (isValid: boolean) => void;
+  onUserDetailsChange: (details: { name: string; email: string; address: string }) => void;
 }
 
-export const UserDetails: React.FC<UserDetailsProps> = ({ setUserDetailsValid }) => {
+export const UserDetails: React.FC<UserDetailsProps> = ({ 
+  setUserDetailsValid,
+  onUserDetailsChange
+}) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
 
-  const validateForm = () => {
+  useEffect(() => {
     const isValid = name.trim() !== '' && email.trim() !== '' && address.trim() !== '';
     setUserDetailsValid(isValid);
-  };
+    
+    if (isValid) {
+      onUserDetailsChange({
+        name: name.trim(),
+        email: email.trim(),
+        address: address.trim()
+      });
+    }
+  }, [name, email, address, setUserDetailsValid, onUserDetailsChange]);
 
   return (
     <div className="bg-zinc-900 rounded-lg p-4 sm:p-6 mb-4 sm:mb-8">
@@ -24,10 +36,7 @@ export const UserDetails: React.FC<UserDetailsProps> = ({ setUserDetailsValid })
             type="text"
             placeholder="John Doe"
             value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              validateForm();
-            }}
+            onChange={(e) => setName(e.target.value)}
             className="w-full bg-zinc-800 text-white px-3 sm:px-4 py-2 rounded text-sm sm:text-base"
             required
           />
@@ -38,10 +47,7 @@ export const UserDetails: React.FC<UserDetailsProps> = ({ setUserDetailsValid })
             type="email"
             placeholder="john.doe@example.com"
             value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              validateForm();
-            }}
+            onChange={(e) => setEmail(e.target.value)}
             className="w-full bg-zinc-800 text-white px-3 sm:px-4 py-2 rounded text-sm sm:text-base"
             required
           />
@@ -52,10 +58,7 @@ export const UserDetails: React.FC<UserDetailsProps> = ({ setUserDetailsValid })
             type="text"
             placeholder="123 Main St, City, Country"
             value={address}
-            onChange={(e) => {
-              setAddress(e.target.value);
-              validateForm();
-            }}
+            onChange={(e) => setAddress(e.target.value)}
             className="w-full bg-zinc-800 text-white px-3 sm:px-4 py-2 rounded text-sm sm:text-base"
             required
           />

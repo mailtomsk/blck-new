@@ -1,12 +1,12 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Facebook, Twitter, Instagram, Youtube } from 'lucide-react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
-import { Watch } from './pages/Watch';
 import { Cart } from './pages/Cart';
 import { Checkout } from './pages/Checkout';
 import { Navbar } from './components/Navbar';
+import { OrderConfirmation } from './pages/OrderConfirmation';
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -67,10 +67,10 @@ function App() {
       {showMainNav && <Navbar />}
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/watch/:id" element={<Watch />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
+        <Route path="/order-confirmation" element={<OrderConfirmation />} />
       </Routes>
       {showMainNav && <Footer />}
     </div>

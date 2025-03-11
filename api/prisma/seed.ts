@@ -1,213 +1,133 @@
-import { PrismaClient, Movie, Category } from '@prisma/client';
-import axios from 'axios';
+import { PrismaClient } from '@prisma/client';
+import fs from 'fs';
+import path from 'path';
+import csv from 'csv-parser';
 
 const prisma = new PrismaClient();
 
-// TMDB API configuration
-const TMDB_API_KEY = '8f896c100e260feb3bfe2e288c2efa85';
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/original';
-const VIDEO_BASE_URL = 'https://api.themoviedb.org/3/movie';
-
-interface TMDBMovie {
-  id: number;
-  title: string;
-  overview: string;
-  poster_path: string | null;
-  backdrop_path: string | null;
-  release_date: string;
-  genre_ids: number[];
+async function readCSV(filePath: string) {
+  return new Promise<any[]>((resolve, reject) => {
+    const results: any[] = [];
+    fs.createReadStream(filePath)
+      .pipe(csv())
+      .on('data', (data) => results.push(data))
+      .on('end', () => resolve(results))
+      .on('error', (error) => reject(error));
+  });
 }
 
-interface TMDBMovieDetails extends TMDBMovie {
-  runtime: number;
-  vote_average: number;
-}
-
-interface TMDBGenre {
-  id: number;
-  name: string;
-}
-
-interface TMDBVideoResult {
-  results: Array<{
-    key: string;
-    site: string;
-    type: string;
-  }>;
-}
-
-interface TMDBCredits {
-  cast: Array<{
-    name: string;
-    order: number;
-  }>;
-  crew: Array<{
-    name: string;
-    job: string;
-  }>;
-}
-
-async function getVideoUrl(movieId: number): Promise<string | null> {
+async function seed() {
   try {
-    const response = await axios.get<TMDBVideoResult>(
-      `${VIDEO_BASE_URL}/${movieId}/videos?api_key=${TMDB_API_KEY}`
-    );
-    const videos = response.data.results;
-    // Try to find a trailer
-    const trailer = videos.find(video => 
-      video.type === 'Trailer' && video.site === 'YouTube'
-    );
-    if (trailer) {
-      return `https://www.youtube.com/watch?v=${trailer.key}`;
-    }
-    return null;
-  } catch (error) {
-    console.error(`Error fetching video for movie ${movieId}:`, error);
-    return null;
-  }
-}
+    const dataFolder = path.join(__dirname, 'data');
 
-interface TMDBResponse<T> {
-  results: T[];
-}
-
-async function main() {
-  try {
-    // First, fetch all genres from TMDB
-    const genresResponse = await axios.get<{ genres: TMDBGenre[] }>(
-      `${TMDB_BASE_URL}/genre/movie/list?api_key=${TMDB_API_KEY}`
-    );
-    const tmdbGenres: TMDBGenre[] = genresResponse.data.genres;
-
-    // Create or update categories in our database
-    for (const genre of tmdbGenres) {
+    // Read and insert categories
+    const categories = await readCSV(path.join(dataFolder, 'categories.csv'));
+    for (const category of categories) {
       await prisma.category.upsert({
-        where: { id: genre.id },
-        update: { name: genre.name },
+        where: { id: Number(category.id) },
+        update: { name: category.name, description: category.description },
         create: {
-          id: genre.id,
-          name: genre.name,
-          description: `Movies in the ${genre.name} genre`,
+          id: Number(category.id),
+          name: category.name,
+          description: category.description,
         },
       });
     }
 
-    // Fetch popular movies from TMDB
-    const moviesResponse = await axios.get<TMDBResponse<TMDBMovie>>(
-      `${TMDB_BASE_URL}/movie/popular?api_key=${TMDB_API_KEY}`
-    );
-    const movies: TMDBMovie[] = moviesResponse.data.results;
+    // Read and insert hosts
+    const hosts = await readCSV(path.join(dataFolder, 'hosts.csv'));
+    for (const host of hosts) {
+      await prisma.host.upsert({
+        where: { id: Number(host.id) },
+        update: { name: host.name, bio: host.bio },
+        create: {
+          id: Number(host.id),
+          name: host.name,
+          bio: host.bio
+        },
+      });
+    }
 
-    // Process each movie
+    // Read and insert movies
+    const movies = await readCSV(path.join(dataFolder, 'movies.csv'));
     for (const movie of movies) {
-      // Get video URL
-      const videoUrl = await getVideoUrl(movie.id);
+      const movieHosts = movie.hostIds ? JSON.parse(movie.hostIds).map((hostId: string) => ({
+        hostId: Number(hostId)
+      })) : [];
 
-      // Get movie details
-      const movieDetailsResponse = await axios.get<TMDBMovieDetails>(
-        `${TMDB_BASE_URL}/movie/${movie.id}?api_key=${TMDB_API_KEY}`
-      );
-      const movieDetails = movieDetailsResponse.data;
-      
-      const runtime = movieDetails.runtime;
-      const hours = Math.floor(runtime / 60);
-      const minutes = runtime % 60;
-      const duration = `${hours}h ${minutes}m`;
+      await prisma.movie.upsert({
+        where: { id: Number(movie.id) },
+        update: {
+          title: movie.title,
+          description: movie.description,
+          thumbnail_url: movie.thumbnail_url,
+          video_url: movie.video_url,
+          release_year: Number(movie.release_year),
+          duration: movie.duration,
+          rating: movie.rating,
+          director: movie.director,
+          cast: movie.cast,
+          products_reviewed: movie.products_reviewed,
+          key_highlights: movie.key_highlights,
+          additional_context: movie.additional_context,
+          movie_hosts: {
+            create: movieHosts
+          }
+        },
+        create: {
+          id: Number(movie.id),
+          title: movie.title,
+          description: movie.description,
+          thumbnail_url: movie.thumbnail_url,
+          video_url: movie.video_url,
+          release_year: Number(movie.release_year),
+          duration: movie.duration,
+          rating: movie.rating,
+          director: movie.director,
+          cast: movie.cast,
+          products_reviewed: movie.products_reviewed,
+          key_highlights: movie.key_highlights,
+          additional_context: movie.additional_context,
+          movie_hosts: {
+            create: movieHosts
+          }
+        },
+      });
+    }
 
-      // Get movie credits (cast and crew)
-      const creditsResponse = await axios.get<TMDBCredits>(
-        `${TMDB_BASE_URL}/movie/${movie.id}/credits?api_key=${TMDB_API_KEY}`
-      );
-      const credits = creditsResponse.data;
-
-      // Get director
-      const director = credits.crew.find(person => person.job === 'Director')?.name || null;
-
-      // Get top 5 cast members
-      const topCast = credits.cast
-        .sort((a, b) => a.order - b.order)
-        .slice(0, 5)
-        .map(actor => actor.name)
-        .join(', ');
-
-      // Get two random category IDs between 27 and 38
-      const getRandomNumber = (min: number, max: number) => 
-        Math.floor(Math.random() * (max - min + 1)) + min;
-      
-      const categoryId1 = getRandomNumber(27, 38);
-      let categoryId2 = getRandomNumber(27, 38);
-      // Make sure we get different numbers
-      while (categoryId2 === categoryId1) {
-        categoryId2 = getRandomNumber(27, 38);
-      }
-
-      // Prepare movie data
-      const movieData = {
-        title: movie.title,
-        description: movie.overview,
-        thumbnail_url: movie.poster_path ? `${IMAGE_BASE_URL}${movie.poster_path}` : '',
-        video_url: videoUrl || '',
-        release_year: new Date(movie.release_date).getFullYear(),
-        duration: duration,
-        rating: `${Math.round(movieDetails.vote_average)}/10`,
-        director: director || '',
-        cast: topCast,
-        tags: 'popular',
-        categories: [categoryId1, categoryId2]
-      };
-
-      // Create the movie
-      try {
-        const createdMovie = await prisma.movie.create({
-          data: {
-            ...movieData,
-            categories: {
-              create: movieData.categories.map(categoryId => ({
-                category: {
-                  connect: { id: categoryId }
-                }
-              }))
-            }
-          },
-        });
-
-        // Connect movie with its categories
-        for (const genreId of movie.genre_ids) {
-          await prisma.movieCategory.create({
-            data: {
-              movieId: createdMovie.id,
-              categoryId: genreId,
-            },
-          });
-        }
-
-        console.log(`Created movie: ${movie.title}`);
-
-        return;
-      } catch (error) {
-        if (error instanceof Error) {
-          console.log(`Skipping existing movie: ${movie.title} ${error.message}`);
-          continue;
-        }
-        throw error;
-      }
+    // Read and insert users
+    const users = await readCSV(path.join(dataFolder, 'users.csv'));
+    for (const user of users) {
+      await prisma.user.upsert({
+        where: { id: Number(user.id) },
+        update: {
+          name: user.name,
+          email: user.email,
+          phone_number: user.phone_number,
+          password: user.password, // Assuming passwords are hashed
+          role: user.role
+        },
+        create: {
+          id: Number(user.id),
+          name: user.name,
+          email: user.email,
+          phone_number: user.phone_number,
+          password: user.password, // Assuming passwords are hashed
+          role: user.role
+        },
+      });
     }
 
     console.log('Seeding completed successfully!');
   } catch (error) {
-    if (error instanceof Error) {
-      console.error('Error during seeding:', error.message);
-    } else {
-      console.error('Unknown error during seeding:', error);
-    }
+    console.error('Error during seeding:', error);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-main()
+seed()
   .catch((e) => {
     console.error(e);
     process.exit(1);
-  }); 
+  });

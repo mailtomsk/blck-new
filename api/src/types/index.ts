@@ -56,3 +56,37 @@ export interface MovieHost {
   host?: Host;
   created_at: Date;
 }
+
+export interface OrderItem {
+  productId: string;
+  quantity: number;
+  price: number;
+}
+
+export interface CustomerDetails {
+  name: string;
+  email: string;
+  address: string;
+}
+
+export interface PaymentDetails {
+  cardNumber: string;
+  expiryDate: string;
+  cvc: string;
+}
+
+export interface Order {
+  items: OrderItem[];
+  customerDetails: CustomerDetails;
+  paymentDetails: PaymentDetails;
+  subtotal: number;
+  tax: number;
+  total: number;
+}
+
+export interface OrderStatus {
+  id: number;
+  name: string;
+  created_at: Date;
+  updated_at: Date;
+}

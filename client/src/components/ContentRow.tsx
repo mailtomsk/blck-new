@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Play, ChevronLeft, ChevronRight, Info, Star } from 'lucide-react';
-import { MovieDetails } from './MovieDetails';
+import { useState, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Plus, Star } from 'lucide-react';
 import { Movie } from '../types/movies';
+import { VideoPopup } from './VideoPopup';
 
 interface ContentRowProps {
   title: string;
@@ -10,87 +10,20 @@ interface ContentRowProps {
 }
 
 export const ContentRow = ({ title, items, isLoading = false }: ContentRowProps) => {
-  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [scrollPosition, setScrollPosition] = useState(0);
-  const [hoveredMovie, setHoveredMovie] = useState<Movie | null>(null);
-  const [hoverTimeout, setHoverTimeout] = useState<number | null>(null);
-  const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
-  const [clickPosition, setClickPosition] = useState({ x: 0, y: 0 });
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const rowRef = useRef<HTMLDivElement>(null);
-
-  // Close hover card on scroll
-  useEffect(() => {
-    const handleScroll = () => {
-      if (hoveredMovie) {
-        setHoveredMovie(null);
-      }
-      if (selectedMovie) {
-        setSelectedMovie(null);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [hoveredMovie, selectedMovie]);
 
   const scrollRow = (direction: 'left' | 'right') => {
     const container = document.getElementById(`scroll-container-${title}`);
     if (container) {
-      const scrollAmount =
-        direction === 'left' ? -container.clientWidth : container.clientWidth;
+      const scrollAmount = direction === 'left' ? -container.clientWidth : container.clientWidth;
       container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
       setScrollPosition(container.scrollLeft + scrollAmount);
-      
-      // Close any open popups when scrolling
-      setHoveredMovie(null);
-      setSelectedMovie(null);
     }
   };
 
-  const handleMouseEnter = (movie: Movie, event: React.MouseEvent) => {
-    // Clear any existing timeout
-    if (hoverTimeout !== null) {
-      clearTimeout(hoverTimeout);
-    }
-    
-    // Set position for the hover card
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    setHoverPosition({
-      x: Math.min(rect.left, window.innerWidth - 400), // Ensure popup doesn't go off-screen
-      y: rect.top
-    });
-    
-    // Set a timeout to show the hover card
-    const timeout = window.setTimeout(() => {
-      setHoveredMovie(movie);
-    }, 800); // 800ms delay before showing the hover card
-    
-    setHoverTimeout(timeout as unknown as number);
-  };
-
-  const handleMouseLeave = () => {
-    if (hoverTimeout !== null) {
-      clearTimeout(hoverTimeout);
-      setHoverTimeout(null);
-    }
-    
-    // Small delay before hiding to allow moving to the hover card
-    setTimeout(() => {
-      if (!document.querySelector(':hover > .hover-card')) {
-        setHoveredMovie(null);
-      }
-    }, 300);
-  };
-
-  const handleMovieClick = (movie: Movie, event: React.MouseEvent) => {
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    setClickPosition({
-      x: Math.min(rect.left, window.innerWidth - 400), // Ensure popup doesn't go off-screen
-      y: rect.top
-    });
+  const handleMovieClick = (movie: Movie) => {
     setSelectedMovie(movie);
   };
 
@@ -128,44 +61,30 @@ export const ContentRow = ({ title, items, isLoading = false }: ContentRowProps)
             {items.map((item) => (
               <div
                 key={item.id}
-                className="flex-none w-[160px] sm:w-[200px] md:w-[250px] lg:w-[300px] relative first:ml-4 last:mr-4 transition-transform duration-300 ease-in-out hover:z-10"
-                onMouseEnter={(e) => handleMouseEnter(item, e)}
-                onMouseLeave={handleMouseLeave}
+                className="flex-none w-[200px] sm:w-[280px] md:w-[320px] lg:w-[400px] relative first:ml-4 last:mr-4 transition-transform duration-300 ease-in-out cursor-pointer group"
+                onClick={() => handleMovieClick(item)}
               >
                 <img
-                  onClick={(e) => setHoveredMovie(item)}
                   src={item.thumbnail_url}
                   alt={item.title}
-                  className="w-full h-[200px] sm:h-[250px] md:h-[300px] lg:h-[375px] object-cover rounded-md transition transform duration-300 ease-in-out hover:scale-105 cursor-pointer"
+                  className="w-full object-cover rounded-md transition transform duration-300 ease-in-out group-hover:brightness-75"
                 />
-                <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 transition-all duration-300 rounded-md flex items-center justify-center opacity-0 hover:opacity-100">
-                  <div className="flex flex-col items-center gap-4 transform translate-y-4 transition-transform duration-300 group-hover:translate-y-0">
-                    <Play
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setHoveredMovie(item);
-                      }}
-                      className="w-8 h-8 sm:w-12 sm:h-12 text-white cursor-pointer hover:scale-110 transition-transform duration-300"
-                    />
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 bg-gradient-to-t from-black to-transparent">
-                    <h3 className="text-sm sm:text-base text-white font-semibold truncate">
-                      {item.title}
-                    </h3>
-                    <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-300">
-                      {item.rating && (
-                        <span className="flex items-center text-green-500">
-                          <Star className="w-3 h-3 mr-1 inline" fill="currentColor" />
-                          {item.rating}
-                        </span>
-                      )}
-                      <span className="px-1 border border-gray-500 text-xs">
+                <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-4 bg-gradient-to-t from-black to-transparent">
+                  <h3 className="text-sm sm:text-base text-white font-semibold truncate">
+                    {item.title}
+                  </h3>
+                  <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-300">
+                    {item.rating && (
+                      <span className="flex items-center text-green-500">
+                        <Star className="w-3 h-3 mr-1 inline" fill="currentColor" />
                         {item.rating}
                       </span>
-                      {item.show && (
-                        <span className="truncate max-w-[100px]">{item.show}</span>
-                      )}
-                    </div>
+                    )}
+                    {item.category && (
+                      <span className="px-1 border border-gray-500 text-xs rounded">
+                        {item.category.name}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -185,43 +104,13 @@ export const ContentRow = ({ title, items, isLoading = false }: ContentRowProps)
           <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6" />
         </button>
       </div>
-      
-      {/* Hover card */}
-      {hoveredMovie && (
-        <div 
-          className="hover-card fixed z-50 transition-opacity duration-300 ease-in-out animate-fade-in"
-          style={{
-            left: `${hoverPosition.x}px`,
-            top: `${hoverPosition.y - 50}px`,
-          }}
-          onMouseEnter={() => clearTimeout(hoverTimeout as number)}
-          onMouseLeave={() => setHoveredMovie(null)}
-        >
-          <MovieDetails
-            isOpen={true}
-            onClose={() => setHoveredMovie(null)}
-            movie={hoveredMovie}
-            isPopup={true}
-          />
-        </div>
-      )}
-      
-      {/* Click modal */}
+
+      {/* Video Popup */}
       {selectedMovie && (
-        <div 
-          className="fixed z-50 transition-opacity duration-300 ease-in-out animate-fade-in"
-          style={{
-            left: `${clickPosition.x}px`,
-            top: `${clickPosition.y - 50}px`,
-          }}
-        >
-          <MovieDetails
-            isOpen={!!selectedMovie}
-            onClose={() => setSelectedMovie(null)}
-            movie={selectedMovie}
-            isPopup={true}
-          />
-        </div>
+        <VideoPopup
+          movie={selectedMovie}
+          onClose={() => setSelectedMovie(null)}
+        />
       )}
     </div>
   );

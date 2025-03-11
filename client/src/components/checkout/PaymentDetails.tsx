@@ -3,19 +3,13 @@ import React from 'react';
 interface PaymentDetailsProps {
   total: number;
   handleCheckout: () => void;
-  error: string | null;
 }
 
-export const PaymentDetails: React.FC<PaymentDetailsProps> = ({ total, handleCheckout, error }) => {
+export const PaymentDetails: React.FC<PaymentDetailsProps> = ({ total, handleCheckout }) => {
   return (
     <div className="bg-zinc-900 rounded-lg p-4 sm:p-6">
       <h2 className="text-lg sm:text-xl font-semibold text-white mb-4">Payment Details</h2>
       <div className="space-y-4">
-        {error && (
-          <div className="bg-brand-yellow bg-opacity-10 border border-brand-yellow text-brand-yellow px-4 py-2 rounded text-sm">
-            {error}
-          </div>
-        )}
         <div>
           <label className="block text-gray-400 mb-2 text-sm">Card Number</label>
           <input

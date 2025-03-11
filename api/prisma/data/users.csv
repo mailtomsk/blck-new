@@ -1,0 +1,2 @@
+id,name,email,phone_number,password,date_born,last_session,update_at,created_at,role
+1,admin,admin@blck.com,9677421307,20093d8d6228d8e5e5cc75b163e0c74f65519a5d4c81065b86d2dfef54adda61,1993-07-06 00:00:00,2025-03-07 13:48:42.371,2025-03-07 13:48:42.372,2025-03-05 13:05:36.123,ADMIN

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { LogIn } from 'lucide-react';
 
 export function Login() {
   const [username, setUsername] = useState('');

@@ -9,11 +9,13 @@ import {
   LogOut,
   FolderOpen,
   CreditCard,
-  UserCircle
+  UserCircle,
+  ShoppingBag
 } from 'lucide-react';
 import { Categories } from './features/Categories';
 import { Movies } from './features/Movies';
 import { Hosts } from './features/Hosts';
+import { Orders } from './features/Orders';
 import { AdminHeader } from '../components/AdminHeader';
 import { Users as UsersComponent } from './features/Users';
 import { Settings as SettingsComponent } from '../components/Settings';
@@ -144,6 +146,17 @@ export function Admin() {
             Users
           </button>
           <button
+            onClick={() => setActiveTab('orders')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+              activeTab === 'orders'
+                ? 'text-brand-yellow'
+                : 'text-gray-400 hover:bg-zinc-800'
+            }`}
+          >
+            <ShoppingBag className="h-5 w-5" />
+            Orders
+          </button>
+          <button
             onClick={() => setActiveTab('payments')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
               activeTab === 'payments'
@@ -195,6 +208,8 @@ export function Admin() {
                 : 'Hosts'
               : activeTab === 'users'
               ? 'User Management'
+              : activeTab === 'orders'
+              ? 'Orders'
               : activeTab === 'payments'
               ? 'Payment History'
               : 'Settings'
@@ -265,6 +280,12 @@ export function Admin() {
         {activeTab === 'users' && (
           <div className="space-y-8">
             <UsersComponent />
+          </div>
+        )}
+
+        {activeTab === 'orders' && (
+          <div className="space-y-8">
+            <Orders />
           </div>
         )}
 
