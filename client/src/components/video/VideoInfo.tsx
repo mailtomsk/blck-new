@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Star } from 'lucide-react';
+import { ShoppingCartIcon, Star } from 'lucide-react';
 import { Movie } from '../../types/movies';
 
 interface VideoInfoProps {
@@ -29,9 +29,9 @@ export const VideoInfo: React.FC<VideoInfoProps> = ({ movie, onPlusClick }) => {
 
       <button
         onClick={onPlusClick}
-        className="p-1.5 sm:p-2 bg-yellow-400 rounded-full hover:bg-opacity-90 transition"
+        className="p-2 sm:p-4 bg-yellow-400 rounded-full hover:bg-opacity-90 transition"
       >
-        <Plus className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
+        <ShoppingCartIcon className="w-4 h-4 sm:w-5 sm:h-5" />
       </button>
     </div>
   );

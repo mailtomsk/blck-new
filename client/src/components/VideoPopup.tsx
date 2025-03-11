@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Movie } from '../types/movies';
@@ -24,6 +24,13 @@ export const VideoPopup = ({ movie, onClose }: VideoPopupProps) => {
   const progressRef = useRef<HTMLDivElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    setIsVisible(true);
+    return () => setIsVisible(false);
+  }, []);
 
   // Custom hooks
   useHls(videoRef, movie.video_url);
@@ -57,10 +64,10 @@ export const VideoPopup = ({ movie, onClose }: VideoPopupProps) => {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-75 z-50" onClick={onClose} />
+      <div className={`fixed inset-0 bg-black bg-opacity-75 z-50 transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`} onClick={onClose} />
       <div
         ref={popupRef}
-        className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[95vw] sm:w-[90vw] max-w-5xl z-50 bg-zinc-900 rounded-lg overflow-hidden shadow-2xl"
+        className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[95vw] sm:w-[90vw] max-w-5xl z-50 bg-zinc-900 rounded-lg overflow-hidden shadow-2xl transition-transform duration-300"
       >
         <div className="relative">
           <video
@@ -101,10 +108,12 @@ export const VideoPopup = ({ movie, onClose }: VideoPopupProps) => {
                 toggleMute={toggleMute}
               />
 
-              <VideoInfo 
-                movie={movie}
-                onPlusClick={handlePlusClick}
-              />
+              {!showAddToCart && (
+                <VideoInfo 
+                  movie={movie}
+                  onPlusClick={handlePlusClick}
+                />
+              )}
             </div>
           </div>
 

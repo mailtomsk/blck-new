@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, ArrowRight, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, ArrowRight, ArrowLeft, Star } from 'lucide-react';
 import { Movie } from '../../types/movies';
 
 interface AddToCartPanelProps {
@@ -31,7 +31,7 @@ export const AddToCartPanel: React.FC<AddToCartPanelProps> = ({
       <div className="flex justify-between px-6 mb-4">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition"
+          className="flex items-center gap-2 px-4 py-2 bg-yellow-300 rounded-full text-black hover:bg-brand-yellow transition"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back</span>
@@ -40,7 +40,7 @@ export const AddToCartPanel: React.FC<AddToCartPanelProps> = ({
         {isAdded && (
           <button
             onClick={onGoToCart}
-            className="relative flex items-center gap-2 px-4 py-2 bg-white rounded-full text-black hover:bg-white/90 transition font-medium group overflow-hidden"
+            className="relative flex items-center gap-2 px-4 py-2 bg-yellow-300 rounded-full text-black hover:bg-brand-yellow transition font-medium group overflow-hidden"
           >
             <span className={`transition-transform duration-300 ${showPlusOne ? 'translate-y-8' : 'translate-y-0'}`}>
               Go to Cart
@@ -71,9 +71,9 @@ export const AddToCartPanel: React.FC<AddToCartPanelProps> = ({
           <div className="flex-1">
             <h3 className="text-lg sm:text-2xl font-bold text-white mb-2">{movie.title}</h3>
             <div className="flex items-start gap-2 mb-2">
-              <div className="flex items-center gap-2 px-2 py-1 bg-green-400 rounded text-xs font-medium">
+              <div className="flex items-center px-2 py-1 bg-brand-yellow rounded text-xs font-medium">
+                <Star className="w-3 h-3 mr-0.5 sm:mr-1" fill='currentColor'/>
                 <span className="text-black">4.7</span>
-                <span className="text-black/70">/ 5</span>
               </div>
               {movie.category && (
                 <span className="px-2 py-1 bg-zinc-800 text-gray-300 rounded text-xs">
