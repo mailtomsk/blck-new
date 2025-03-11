@@ -48,9 +48,11 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
           },
           paymentDetails: {
             create: {
-              cardNumber: orderData.paymentDetails.cardNumber,
-              expiryDate: orderData.paymentDetails.expiryDate,
-              cvc: orderData.paymentDetails.cvc
+              brand : orderData.paymentDetails.brand,
+              last_four_digit : orderData.paymentDetails.last4,
+              expiry_month : orderData.paymentDetails.expiryMonth,
+              expiry_year : orderData.paymentDetails.expiryYear,
+              payment_method_id : orderData.paymentDetails.paymentMethodId
             }
           }
         },

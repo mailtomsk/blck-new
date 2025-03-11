@@ -111,14 +111,16 @@ model OrderItem {
 }
 
 model PaymentDetails {
-  id          Int      @id @default(autoincrement())
-  orderId     Int      @unique
-  cardNumber  String
-  expiryDate  String
-  cvc         String
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id                  Int      @id @default(autoincrement())
+  orderId             Int      @unique
+  brand               String   @default("")
+  last_four_digit     String   @default("")
+  expiry_month        Int      @default(0)
+  expiry_year         Int      @default(0)
+  payment_method_id	  String   @default("")
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
 
   @@map("payment_details")
 }

@@ -70,9 +70,11 @@ export interface CustomerDetails {
 }
 
 export interface PaymentDetails {
-  cardNumber: string;
-  expiryDate: string;
-  cvc: string;
+  brand: string;
+  last4: string;
+  expiryMonth: number;
+  expiryYear: number;
+  paymentMethodId: string;
 }
 
 export interface Order {

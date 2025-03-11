@@ -2,6 +2,15 @@ export interface OrderItem {
   productId: string;
   quantity: number;
   price: number;
+  title?: string;
+}
+
+export interface PaymentDetails {
+  paymentMethodId: string;
+  last4: string;
+  brand: string;
+  expiryMonth: number;
+  expiryYear: number;
 }
 
 export interface CreateOrderRequest {
@@ -11,11 +20,7 @@ export interface CreateOrderRequest {
     email: string;
     address: string;
   };
-  paymentDetails: {
-    cardNumber: string;
-    expiryDate: string;
-    cvc: string;
-  };
+  paymentDetails: PaymentDetails;
   subtotal: number;
   tax: number;
   total: number;
@@ -29,10 +34,11 @@ export interface Order {
     email: string;
     address: string;
   };
+  paymentDetails: PaymentDetails;
   subtotal: number;
   tax: number;
   total: number;
-  status: 'pending' | 'completed' | 'failed';
+  status: "pending" | "completed" | "failed";
   createdAt: string;
 }
 

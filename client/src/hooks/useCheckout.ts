@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useCartStore } from '../store/cartStore';
-import { createOrder } from '../services/api/orders';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useCartStore } from "../store/cartStore";
+import { createOrder } from "../services/api/orders";
 
 interface UserDetails {
   name: string;
@@ -20,15 +20,15 @@ export const useCheckout = () => {
   const tax = total * 0.1;
   const finalTotal = total + tax;
 
-  const handleCheckout = async () => {
+  const handleCheckout = async (paymentMethod: any) => {
     if (!isUserDetailsValid || !userDetails) {
-      setError('Please fill in all required fields.');
+      setError("Please fill in all required fields.");
       return;
     }
 
     try {
       const orderData = {
-        items: items.map(item => ({
+        items: items.map((item) => ({
           productId: item.id,
           quantity: item.quantity,
           price: item.price,
@@ -36,9 +36,11 @@ export const useCheckout = () => {
         })),
         customerDetails: userDetails,
         paymentDetails: {
-          cardNumber: '4242424242424242', // Demo card number
-          expiryDate: '12/25',
-          cvc: '123'
+          paymentMethodId: paymentMethod.id,
+          last4: paymentMethod.card.last4,
+          brand: paymentMethod.card.brand,
+          expiryMonth: paymentMethod.card.exp_month,
+          expiryYear: paymentMethod.card.exp_year
         },
         subtotal: total,
         tax,
@@ -49,14 +51,14 @@ export const useCheckout = () => {
 
       if (response.ok && response.data) {
         clearCart();
-        navigate('/order-confirmation', { 
+        navigate("/order-confirmation", {
           state: { order: response.data }
         });
       } else {
-        setError(response.message || 'Failed to process order');
+        setError(response.message || "Failed to process order");
       }
     } catch (err) {
-      setError('An error occurred while processing your order');
+      setError("An error occurred while processing your order");
     }
   };
 
@@ -67,6 +69,6 @@ export const useCheckout = () => {
     setUserDetailsValid,
     setUserDetails,
     total,
-    handleCheckout,
+    handleCheckout
   };
 };
