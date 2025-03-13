@@ -68,7 +68,7 @@ export const FeaturedContent = () => {
 
   const handleBuyNow = () => {
     addItem({
-      id: 5,
+      id: "5",
       title: 'Seat Armor',
       price: 14.99,
       imageId: 'https://blck-videos.s3.us-east-1.amazonaws.com/thumbnails/82dcf8a6-26f9-4ab3-b2b1-2e2c2f35b008.jpg'
