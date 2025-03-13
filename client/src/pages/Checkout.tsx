@@ -4,6 +4,7 @@ import { UserDetails } from "../components/checkout/UserDetails";
 import { useCheckout } from "../hooks/useCheckout";
 
 export function Checkout() {
+
   const {
     error,
     setError,

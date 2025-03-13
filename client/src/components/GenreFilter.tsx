@@ -13,30 +13,30 @@ export const GenreFilter: React.FC<GenreFilterProps> = ({
   onSelectCategory 
 }) => {
   return (
-    <div className="px-4 sm:px-16 py-4 flex gap-2 sm:gap-4 overflow-x-auto scrollbar-hide">
+    <div className="px-4 sm:px-16 py-4 flex gap-[45px] overflow-x-auto scrollbar-hide pt-2">
       <button
         key="all"
-        className={`px-3 sm:px-4 py-1 text-xs sm:text-sm rounded-full whitespace-nowrap transition-all duration-300 ease-in-out transform hover:scale-105 ${
+        className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center transition-all duration-300 ease-in-out transform hover:scale-105 ${
           selectedCategoryId === null 
-            ? 'text-black bg-brand-yellow font-semibold shadow-lg' 
-            : 'text-gray-300 bg-gray-900 hover:bg-gray-800'
+            ? 'bg-brand-yellow text-black font-semibold shadow-lg' 
+            : 'bg-gray-900 text-gray-300 hover:bg-gray-800'
         }`}
         onClick={() => onSelectCategory(null)}
       >
-        All
+        <span className="text-xs sm:text-sm text-center">All</span>
       </button>
       
       {categories.map((category) => (
         <button
           key={category.id}
-          className={`px-3 sm:px-4 py-1 text-xs sm:text-sm rounded-full whitespace-nowrap transition-all duration-300 ease-in-out transform hover:scale-105 ${
+          className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center transition-all duration-300 ease-in-out transform hover:scale-105 ${
             selectedCategoryId === category.id 
-              ? 'text-black bg-brand-yellow font-semibold shadow-lg' 
-              : 'text-gray-300 bg-gray-900 hover:bg-gray-800'
+              ? 'bg-brand-yellow text-black font-semibold shadow-lg' 
+              : 'bg-gray-900 text-gray-300 hover:bg-gray-800'
           }`}
           onClick={() => onSelectCategory(category.id)}
         >
-          {category.name}
+          <span className="text-xs sm:text-sm text-center px-2">{category.name}</span>
         </button>
       ))}
     </div>

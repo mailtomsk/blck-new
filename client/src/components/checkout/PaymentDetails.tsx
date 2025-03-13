@@ -1,5 +1,5 @@
-import React from 'react';
-import { loadStripe } from '@stripe/stripe-js';
+import React, { useState, useEffect } from 'react';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
 import {
   Elements,
   CardElement,
@@ -7,7 +7,9 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 
-const STRIPE_PUBLIC_KEY = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+const STRIPE_PUBLIC_KEY = import.meta.env.VITE_STRIPE_KEY;
+
+console.log(STRIPE_PUBLIC_KEY);
 
 const stripePromise = loadStripe(STRIPE_PUBLIC_KEY);
 
@@ -106,12 +108,35 @@ interface PaymentDetailsProps {
 }
 
 export const PaymentDetails: React.FC<PaymentDetailsProps> = ({ total, handleCheckout }) => {
+  const [stripeError, setStripeError] = useState<string | null>(null);
+  const [stripe, setStripe] = useState<Stripe | null>(null);
+
+  useEffect(() => {
+    stripePromise.then((stripeInstance) => {
+      if (!stripeInstance) {
+        setStripeError('Failed to load Stripe');
+      } else {
+        setStripe(stripeInstance);
+      }
+    }).catch(() => {
+      setStripeError('Failed to load Stripe');
+    });
+  }, []);
+
+  if (stripeError) {
+    return <div className="text-red-500 text-sm">{stripeError}</div>;
+  }
+
   return (
     <div className="bg-zinc-900 rounded-lg p-4 sm:p-6">
       <h2 className="text-lg sm:text-xl font-semibold text-white mb-4">Payment Details</h2>
-      <Elements stripe={stripePromise}>
-        <PaymentForm total={total} handleCheckout={handleCheckout} />
-      </Elements>
+      {stripe ? (
+        <Elements stripe={stripe}>
+          <PaymentForm total={total} handleCheckout={handleCheckout} />
+        </Elements>
+      ) : (
+        <div>Loading...</div>
+      )}
     </div>
   );
 };
